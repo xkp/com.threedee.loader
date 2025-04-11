@@ -11,6 +11,7 @@ using Unity.Plastic.Newtonsoft.Json;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 public class BigGameLoader
 {
@@ -70,7 +71,7 @@ public class BigGameLoader
 								if (guids.Length == 0)
 								{
 									Debug.LogError($"No prefab found with name '{prefabName}'");
-									return;
+									continue;
 								}
 
 								// Assume the first found prefab is the one we want.
@@ -434,5 +435,29 @@ public class BigGameLoader
 		}
 
 		return null;
+	}
+
+	public static void Update(string gameItemPath, string modulePath)
+	{
+		string jsonContent = File.ReadAllText(gameItemPath);
+		JObject jsonObject = JObject.Parse(jsonContent);
+
+		var game = LoadGame(jsonObject, modulePath, out var modules);
+		if (game == null)
+		{
+			Debug.Log($"could not load: {gameItemPath}");
+			return;
+		}
+
+		if (game.GameItems != null)
+		{
+			var toAdd = new List<GameItem>();
+			var toUpdate = new List<Tuple<GameItem, GameObject>>();
+			var toRemove = new List<GameObject>();
+			foreach (var item in game.GameItems)
+			{
+				//td: implement
+			}
+		}
 	}
 }

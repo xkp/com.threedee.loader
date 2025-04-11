@@ -67,6 +67,52 @@ public class BGBuildScript
 		Debug.Log("Build completed. Build located at: " + buildPath);
 	}
 
+	public static void UpdateGame()
+	{
+		string inputFolder;
+		string outputFolder;
+		string gameItemPath;
+		string modulePath;
+		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath))
+			return;
+
+		Scene scene = OpenDefaultScene();
+		if (!scene.IsValid())
+		{
+			Console.WriteLine("There must be at least one valid scene.");
+			return;
+		}
+
+		Console.WriteLine("Loading environment assets...");
+		BigGameLoader.Update(gameItemPath, modulePath);
+
+		//save before generating light maps
+		EditorSceneManager.SaveScene(scene);
+
+		Console.WriteLine("Generating lightmaps...");
+		GenerateLightmaps();
+
+		Console.WriteLine("Finishing...");
+		EditorSceneManager.SaveScene(scene);
+
+		Debug.Log("Threedee scene generation completed. Scene saved to: " + scene.path);
+
+		// Trigger a build
+		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+		//PlayerSettings.WebGL.template = "BigGame";
+
+		string buildPath = Path.Combine(outputFolder, "Build");
+		BuildPipeline.BuildPlayer(new BuildPlayerOptions
+		{
+			scenes = new[] { scene.path }, //todo: added scenes
+			locationPathName = buildPath,
+			target = BuildTarget.WebGL, // Adjust target as necessary
+			options = BuildOptions.None
+		});
+
+		Debug.Log("Build completed. Build located at: " + buildPath);
+	}
+
 	private static void GenerateLightmaps()
 	{
 		// Create and configure lighting settings
@@ -102,15 +148,6 @@ public class BGBuildScript
 	private static Scene OpenDefaultScene()
 	{
 		Scene scene = EditorSceneManager.OpenScene("Assets/Big Game/MainScene.unity", OpenSceneMode.Single);
-		/*		for (int i = 0; i < EditorSceneManager.sceneCount; i++)
-				{
-					scene = EditorSceneManager.GetSceneAt(i);
-					Console.WriteLine($"scene: {scene.name} at: {scene.path}");
-				}
-
-				if (scene.IsValid())
-					EditorSceneManager.OpenScene(scene.path);
-		*/
 		return scene;
 	}
 
