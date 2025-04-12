@@ -11,6 +11,9 @@ using Unity.Plastic.Newtonsoft.Json;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
+using static UnityEditor.PlayerSettings;
+using static UnityEngine.Rendering.DebugUI.Table;
 using Object = UnityEngine.Object;
 
 public class BigGameLoader
@@ -54,7 +57,8 @@ public class BigGameLoader
 		{
 			foreach (var item in game.GameItems)
 			{
-				var module = GetModuleById(modules, item.ModuleId);
+				CreateGameObject(item, modules);
+/*				var module = GetModuleById(modules, item.ModuleId);
 				if (module != null)
 				{
 					var template = module.GetTemplateItem(item.TemplateId);
@@ -98,7 +102,7 @@ public class BigGameLoader
 						}
 					}
 				}
-			}
+*/			}
 		}
 
 		foreach (var module in modules)
@@ -451,12 +455,116 @@ public class BigGameLoader
 
 		if (game.GameItems != null)
 		{
+			var allGameObjects = GameObject
+				.FindObjectsByType<BigGameObject>(FindObjectsSortMode.None)
+				.ToDictionary(g => g.Key);
+
+			var allGameItems = new Dictionary<string, GameItem>();
+
+			//Build update
 			var toAdd = new List<GameItem>();
 			var toUpdate = new List<Tuple<GameItem, GameObject>>();
 			var toRemove = new List<GameObject>();
 			foreach (var item in game.GameItems)
 			{
-				//td: implement
+				var dataKey = new BigGameObject { Kind = BigObjectKind.GameItem, Id = item.Id };
+				allGameItems[dataKey.Key] = item;
+
+				var existingObject = null as GameObject;
+				if (allGameObjects.TryGetValue(dataKey.Key, out BigGameObject bgo))
+				{
+					existingObject = bgo.gameObject;
+				}
+
+				if (existingObject != null)
+				{
+					toUpdate.Add(new Tuple<GameItem, GameObject>(item, existingObject));
+				}
+				else
+				{
+					toAdd.Add(item);
+				}
+			}
+
+			foreach (var gok in allGameObjects)
+			{
+				if (!allGameItems.ContainsKey(gok.Key))
+					toRemove.Add(gok.Value.gameObject);
+			}
+
+			//Apply update
+			foreach (var go in toRemove)
+			{
+				GameObject.Destroy(go);
+			}
+
+			foreach (var gi in toAdd)
+			{
+				CreateGameObject(gi, modules);
+			}
+
+			foreach (var goi in toUpdate)
+			{
+				UpdateGameObject(goi.Item1, goi.Item2);
+			}
+		}
+	}
+
+	private static void UpdateGameObject(GameItem item, GameObject go)
+	{
+		go.transform.position = item.Position; 
+		go.transform.rotation = item.Rotation;
+		go.transform.localScale = item.Scale;
+	}
+
+	private static void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
+	{
+		var module = GetModuleById(modules, item.ModuleId);
+		if (module != null)
+		{
+			var template = module.GetTemplateItem(item.TemplateId);
+			if (template != null)
+			{
+				//give the module a chance for custom importing
+				if (!module.ImportItem(item, template))
+				{
+					//revert to prefab
+					var prefabName = Path.GetFileNameWithoutExtension(template.prefab);
+					if (!string.IsNullOrEmpty(prefabName))
+					{
+						string[] guids = AssetDatabase.FindAssets(prefabName + " t:prefab");
+						if (guids.Length == 0)
+						{
+							Debug.LogError($"No prefab found with name '{prefabName}'");
+							return;
+						}
+
+						// Assume the first found prefab is the one we want.
+						string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+						GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+						if (prefab == null)
+						{
+							Debug.LogError($"Failed to load prefab at path: {path}");
+							return;
+						}
+
+						GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+						UpdateGameObject(item, instance); 
+
+/*						// Determine spawn position and rotation.
+						Vector3 pos = item.Position;
+						Quaternion rot = item.Rotation;
+
+						// Instantiate the prefab in the Scene.
+						GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+						instance.transform.position = pos;
+						instance.transform.rotation = rot;
+						instance.transform.localScale = item.Scale;
+
+						Debug.Log($"Instantiated prefab '{prefabName}' at {pos}");
+*/
+					}
+				}
 			}
 		}
 	}

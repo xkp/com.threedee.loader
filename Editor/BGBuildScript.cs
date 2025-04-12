@@ -58,7 +58,7 @@ public class BGBuildScript
 		string buildPath = Path.Combine(outputFolder, "Build");
 		BuildPipeline.BuildPlayer(new BuildPlayerOptions
 		{
-			scenes = new[] { scene.path }, //todo: added scenes
+			scenes = EditorBuildSettings.scenes.Select(s => s.path).ToArray(),
 			locationPathName = buildPath,
 			target = BuildTarget.WebGL, // Adjust target as necessary
 			options = BuildOptions.None
@@ -89,22 +89,15 @@ public class BGBuildScript
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
 
-		Console.WriteLine("Generating lightmaps...");
-		GenerateLightmaps();
-
-		Console.WriteLine("Finishing...");
-		EditorSceneManager.SaveScene(scene);
-
-		Debug.Log("Threedee scene generation completed. Scene saved to: " + scene.path);
-
 		// Trigger a build
 		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
 		//PlayerSettings.WebGL.template = "BigGame";
 
 		string buildPath = Path.Combine(outputFolder, "Build");
+
 		BuildPipeline.BuildPlayer(new BuildPlayerOptions
 		{
-			scenes = new[] { scene.path }, //todo: added scenes
+			scenes = EditorBuildSettings.scenes.Select(s => s.path).ToArray(),
 			locationPathName = buildPath,
 			target = BuildTarget.WebGL, // Adjust target as necessary
 			options = BuildOptions.None
