@@ -28,6 +28,11 @@ public class BigGameLoader
 			return;
 		}
 
+		foreach (var module in modules)
+		{
+			module.InitModules(modules, game);
+		}
+
 		var gameModule = null as IBGGameModule;
 		foreach (var module in modules)
 		{
@@ -436,7 +441,11 @@ public class BigGameLoader
 
 			foreach (var gi in toAdd)
 			{
-				CreateGameObject(gi, modules);
+				var module = GetModuleById(modules, gi.ModuleId);
+				if (module == null || !module.UpdateItem(gi))
+				{
+					CreateGameObject(gi, modules);
+				}
 			}
 
 			foreach (var goi in toUpdate)

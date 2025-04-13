@@ -136,10 +136,13 @@ public class GameItem
 public interface IBGModule
 {
 	BigGameModule Model { get; set; }
-	void Build();
+
+	void InitModules(IEnumerable<IBGModule> modules, BigGame game);
 	void Init(IEnumerable<IBGModule> modules, BigGame game);
+	void Build();
 	BigGameItem GetTemplateItem(int id);
 	bool ImportItem(GameItem item, BigGameItem template);
+	bool UpdateItem(GameItem item);
 	void Cleanup();
 }
 
@@ -158,6 +161,20 @@ public interface IBGCharacterModule
 public class BaseBGModel : IBGModule
 {
 	public BigGameModule Model { get; set; }
+
+	public virtual void InitModules(IEnumerable<IBGModule> modules, BigGame game)
+	{
+		_game = game;
+		_modules = modules;
+		_gameModule = modules.FirstOrDefault(m =>
+		{
+			var g = m as IBGGameModule;
+			if (g != null)
+				return true;
+			return false;
+		}) as IBGGameModule;
+
+	}
 
 	public virtual void Init(IEnumerable<IBGModule> modules, BigGame game)
 	{
@@ -192,6 +209,11 @@ public class BaseBGModel : IBGModule
 		return false;
 	}
 
+	public virtual bool UpdateItem(GameItem item)
+	{
+		return false;
+	}
+
 	public GameObject GetPrefab(string prefabName)
 	{
 		string[] prefabGuids = AssetDatabase.FindAssets(prefabName);
@@ -222,6 +244,9 @@ public class BaseBGModel : IBGModule
 		}
 	}
 
+	protected BigGame _game;
+	protected IEnumerable<IBGModule> _modules;
+	protected IBGGameModule _gameModule;
 }
 
 
