@@ -393,6 +393,11 @@ public class BigGameLoader
 			return;
 		}
 
+		foreach (var module in modules)
+		{
+			module.InitModules(modules, game);
+		}
+
 		if (game.GameItems != null)
 		{
 			var allGameObjects = GameObject
