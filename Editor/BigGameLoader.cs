@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Unity.Plastic.Newtonsoft.Json;
 using Unity.Plastic.Newtonsoft.Json.Linq;
@@ -54,51 +55,7 @@ public class BigGameLoader
 			foreach (var item in game.GameItems)
 			{
 				CreateGameObject(item, modules);
-/*				var module = GetModuleById(modules, item.ModuleId);
-				if (module != null)
-				{
-					var template = module.GetTemplateItem(item.TemplateId);
-					if (template != null)
-					{
-						//give the module a chance for custom importing
-						if (!module.ImportItem(item, template))
-						{
-							//revert to prefab
-							var prefabName = Path.GetFileNameWithoutExtension(template.prefab);
-							if (!string.IsNullOrEmpty(prefabName))
-							{
-								string[] guids = AssetDatabase.FindAssets(prefabName + " t:prefab");
-								if (guids.Length == 0)
-								{
-									Debug.LogError($"No prefab found with name '{prefabName}'");
-									continue;
-								}
-
-								// Assume the first found prefab is the one we want.
-								string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-								GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-								if (prefab == null)
-								{
-									Debug.LogError($"Failed to load prefab at path: {path}");
-									continue;
-								}
-
-								// Determine spawn position and rotation.
-								Vector3 pos = item.Position;
-								Quaternion rot = item.Rotation;
-
-								// Instantiate the prefab in the Scene.
-								GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-								instance.transform.position = pos;
-								instance.transform.rotation = rot;
-								instance.transform.localScale = item.Scale;
-
-								Debug.Log($"Instantiated prefab '{prefabName}' at {pos}");
-							}
-						}
-					}
-				}
-*/			}
+			}
 		}
 
 		foreach (var module in modules)
@@ -182,25 +139,6 @@ public class BigGameLoader
 		// For MonoBehaviour types, you typically need to add them to a GameObject.
 		object instance = Activator.CreateInstance(controllerType);
 		return instance as IBGModule;
-	}
-
-	private static void CreateNPC(BigGame game, GameItem item)
-	{
-		/*		Debug.Log($"Creating NPC: {item.Name} from {item.Module.name}");
-
-				var module = item.Module;
-				var mainModule = game.GetModule(game.MainModule);
-				var prefab = ModuleInvoke<GameObject>(module, "BuildCharacter", item.Values);
-				if (prefab != null)
-				{
-					ModuleInvoke<GameObject>(mainModule, "BuildNPC", prefab, item.Values);
-
-					var npcInstance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-					npcInstance.transform.position = item.Position;
-				}
-				else 
-					Debug.Log($"Cannot create NPC: {item.Name} from {item.Module}");
-		*/
 	}
 
 	private static BigGame LoadGame(JObject root, string modulePath, out IEnumerable<IBGModule> modules)
@@ -437,6 +375,7 @@ public class BigGameLoader
 		return null;
 	}
 
+	private static Regex pattern = new Regex("^(gi|go)_\\d+$");
 	public static void Update(string gameItemPath, string modulePath)
 	{
 		string jsonContent = File.ReadAllText(gameItemPath);
@@ -452,8 +391,9 @@ public class BigGameLoader
 		if (game.GameItems != null)
 		{
 			var allGameObjects = GameObject
-				.FindObjectsByType<BigGameObject>(FindObjectsSortMode.None)
-				.ToDictionary(g => g.Key);
+				.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
+				.Where(g => pattern.IsMatch(g.name))
+				.ToDictionary(g => g.name);
 
 			var allGameItems = new Dictionary<string, GameItem>();
 
@@ -463,11 +403,11 @@ public class BigGameLoader
 			var toRemove = new List<GameObject>();
 			foreach (var item in game.GameItems)
 			{
-				var dataKey = new BigGameObject { Kind = BigObjectKind.GameItem, Id = item.Id };
-				allGameItems[dataKey.Key] = item;
+				var dataKey = $"gi_{item.Id}";
+				allGameItems[dataKey] = item;
 
 				var existingObject = null as GameObject;
-				if (allGameObjects.TryGetValue(dataKey.Key, out BigGameObject bgo))
+				if (allGameObjects.TryGetValue(dataKey, out GameObject bgo))
 				{
 					existingObject = bgo.gameObject;
 				}
@@ -545,20 +485,8 @@ public class BigGameLoader
 						}
 
 						GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+						instance.name = $"gi_{item.Id}";
 						UpdateGameObject(item, instance); 
-
-/*						// Determine spawn position and rotation.
-						Vector3 pos = item.Position;
-						Quaternion rot = item.Rotation;
-
-						// Instantiate the prefab in the Scene.
-						GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-						instance.transform.position = pos;
-						instance.transform.rotation = rot;
-						instance.transform.localScale = item.Scale;
-
-						Debug.Log($"Instantiated prefab '{prefabName}' at {pos}");
-*/
 					}
 				}
 			}
