@@ -54,7 +54,7 @@ public class BGBuildScript
 
 		// Trigger a build
 		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-		PlayerSettings.WebGL.template = "BigGame";
+		//PlayerSettings.WebGL.template = "BigGame";
 
 		string buildPath = Path.Combine(outputFolder, "Build");
 		BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -105,7 +105,7 @@ public class BGBuildScript
 
 		// Trigger a build
 		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-		PlayerSettings.WebGL.template = "BigGame";
+		//PlayerSettings.WebGL.template = "BigGame";
 
 		string buildPath = Path.Combine(outputFolder, "Build");
 
