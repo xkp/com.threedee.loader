@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using UnityEngine.SceneManagement;
 using Assets.Editor;
+using Unity.AI.Navigation;
 
 public class BGBuildScript
 {
@@ -53,7 +54,7 @@ public class BGBuildScript
 
 		// Trigger a build
 		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-		//PlayerSettings.WebGL.template = "BigGame";
+		PlayerSettings.WebGL.template = "BigGame";
 
 		string buildPath = Path.Combine(outputFolder, "Build");
 		BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -87,12 +88,24 @@ public class BGBuildScript
 		Console.WriteLine("Loading environment assets...");
 		BigGameLoader.Update(gameItemPath, modulePath);
 
+		//build nav meshes
+		NavMeshSurface[] surfaces = GameObject.FindObjectsOfType<NavMeshSurface>();
+
+		// Iterate over each surface and rebuild its nav mesh
+		foreach (NavMeshSurface surface in surfaces)
+		{
+			if (surface != null)
+			{
+				surface.BuildNavMesh();
+			}
+		}       
+		
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
 
 		// Trigger a build
 		PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-		//PlayerSettings.WebGL.template = "BigGame";
+		PlayerSettings.WebGL.template = "BigGame";
 
 		string buildPath = Path.Combine(outputFolder, "Build");
 
