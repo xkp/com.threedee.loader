@@ -30,29 +30,12 @@ public class BigGameLoader
 
 		foreach (var module in modules)
 		{
-			module.InitModules(modules, game);
-		}
-
-		var gameModule = null as IBGGameModule;
-		foreach (var module in modules)
-		{
-			var asGame = module as IBGGameModule;
-			if (asGame != null)
-			{
-				if (gameModule != null)
-				{
-					Debug.Log($"Error: multiple game controllers");
-				}
-
-				gameModule = asGame;
-			}
-
-			module.Init(modules.Except(new[] { module }), game);
+			module.Init(modules, game);
 		}
 
 		foreach (var module in modules)
 		{
-			module.Build();
+			module.ConfigProject();
 		}
 
 		if (game.GameItems != null)
@@ -395,7 +378,7 @@ public class BigGameLoader
 
 		foreach (var module in modules)
 		{
-			module.InitModules(modules, game);
+			module.Init(modules, game);
 		}
 
 		if (game.GameItems != null)
@@ -476,7 +459,7 @@ public class BigGameLoader
 			if (template != null)
 			{
 				//give the module a chance for custom importing
-				if (!module.ImportItem(item, template))
+				if (!module.CreateItem(item, template))
 				{
 					//revert to prefab
 					var prefabName = Path.GetFileNameWithoutExtension(template.prefab);

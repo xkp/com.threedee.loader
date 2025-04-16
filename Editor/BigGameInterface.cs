@@ -136,14 +136,15 @@ public class GameItem
 public interface IBGModule
 {
 	BigGameModule Model { get; set; }
-
-	void InitModules(IEnumerable<IBGModule> modules, BigGame game);
-	void Init(IEnumerable<IBGModule> modules, BigGame game);
-	void Build();
 	BigGameItem GetTemplateItem(int id);
-	bool ImportItem(GameItem item, BigGameItem template);
-	bool UpdateItem(GameItem item);
+
+	void Init(IEnumerable<IBGModule> modules, BigGame game);
+	void ConfigProject();
+	void Build();
 	void Cleanup();
+
+	bool CreateItem(GameItem item, BigGameItem template);
+	bool UpdateItem(GameItem item);
 }
 
 public interface IBGGameModule
@@ -178,6 +179,15 @@ public class BaseBGModel : IBGModule
 
 	public virtual void Init(IEnumerable<IBGModule> modules, BigGame game)
 	{
+	}
+
+	public virtual void ConfigProject()
+	{
+	}
+
+	public virtual bool CreateItem(GameItem item, BigGameItem template)
+	{
+		return false;
 	}
 
 	public virtual void Build()
