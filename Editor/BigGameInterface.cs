@@ -13,7 +13,6 @@ public class BigGame
 	public string Name { get; set; }
 	public string MainModule { get; set; }
 	public List<BigGameModule> Modules { get; set; } = new List<BigGameModule>();
-	public BigGameCharacter Character { get; set; }
 
 	public List<GameItem> GameItems { get; set; } = new List<GameItem>();
 
@@ -32,17 +31,6 @@ public class BigGame
 		var module = GetModule(item.ModuleId);
 		return module?.GetTemplate(item.TemplateId);
 	}
-}
-
-public class BigGameCharacter
-{
-	public int Id { get; set; }
-	public string Name { get; set; }
-	public string Module { get; set; }
-	public object Parameters { get; set; }
-	public Vector3 Position { get; set; }
-	public Quaternion Rotation { get; set; }
-	public Vector3 Scale { get; set; }
 }
 
 public class BigGameModule
@@ -80,6 +68,26 @@ public class BigGameItemGroup
 	public List<BigGameItem> items { get; set; }
 }
 
+public enum BigGamePropertyType
+{
+	BGPT_STRING,
+	BGPT_INT,
+	BGPT_FLOAT,
+	BGPT_BOOL,
+	BGPT_ENUM,
+	BGPT_GAMEITEM,
+	BGPT_ASSET,
+	BGPT_PREFAB,
+	BGPT_OBJECT,
+}
+
+public class BigGameProperty
+{
+	public string name { get; set; }
+	public BigGamePropertyType type { get; set; }
+	public string data { get; set; }
+}
+
 public class BigGameItem
 {
 	public int id { get; set; }
@@ -91,7 +99,7 @@ public class BigGameItem
 	public bool unique { get; set; }
 	public bool notDraggable { get; set; }
 	public bool template { get; set; }
-	public Dictionary<string, object> Properties { get; set; }
+	public List<BigGameProperty> Properties { get; set; }
 	public Dictionary<string, object> Values { get; set; }
 
 	public bool GetPropertyValue<T>(string key, out T value)

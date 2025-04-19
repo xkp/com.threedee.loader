@@ -224,15 +224,6 @@ public class BigGameLoader
 		return result;
 	}
 
-	private static BigGameCharacter LoadCharacter(JObject mainCharacterNode)
-	{
-		if (mainCharacterNode == null)
-			return null;
-
-		var result = new BigGameCharacter();
-		return result; //TODO:
-	}
-
 	private static BigGameModule LoadModule(JObject moduleNode)
 	{
 		var result = new BigGameModule();
@@ -307,10 +298,58 @@ public class BigGameLoader
 		return result;
 	}
 
-	private static Dictionary<string, object> LoadProperties(JArray properties)
+	private static List<BigGameProperty> LoadProperties(JArray properties)
 	{
-		var result = new Dictionary<string, object>();
-		return result; //TODO:
+		var result = new List<BigGameProperty>();
+		foreach (var propNode in properties)
+		{
+			var newProp = new BigGameProperty();
+			newProp.name = propNode["name"]?.ToString();
+			newProp.data = propNode["data"]?.ToString();
+			newProp.type = GetPropType(propNode["type"]?.ToString());
+
+			result.Add(newProp);
+		}
+		return result; 
+	}
+
+/*	private static List<BigGameEnumItem> LoadEnumItems(JArray enumItems)
+	{
+		var result = new List<BigGameEnumItem>();
+		foreach (var enumItem in enumItems)
+		{
+			var newItem = new BigGameEnumItem();
+			newItem.name = enumItem["name"]?.ToString();
+			newItem.icon = enumItem["icon"]?.ToString();
+
+			result.Add(newItem);
+		}
+		return result;
+	}
+*/
+	private static BigGamePropertyType GetPropType(string typeName)
+	{
+		switch (typeName)
+		{
+			case "string":
+				return BigGamePropertyType.BGPT_STRING;
+			case "int":
+				return BigGamePropertyType.BGPT_INT;
+			case "float":
+				return BigGamePropertyType.BGPT_FLOAT;
+			case "bool":
+				return BigGamePropertyType.BGPT_BOOL;
+			case "enum":
+				return BigGamePropertyType.BGPT_ENUM;
+			case "gameitem":
+				return BigGamePropertyType.BGPT_GAMEITEM;
+			case "asset":
+				return BigGamePropertyType.BGPT_ASSET;
+			case "object":
+				return BigGamePropertyType.BGPT_OBJECT;
+		}
+
+		throw new InvalidDataException($"Unkown type: {typeName}");
 	}
 
 	private static List<string> LoadPackageList(JArray values)
@@ -322,45 +361,6 @@ public class BigGameLoader
 		}
 
 		return result;
-	}
-
-	private static T ModuleInvoke<T>(BigGameModule module, string method, params object[] args)
-	{
-		return (T)InvokeStaticMethod(module.controller, method, args);
-	}
-
-	private static object InvokeStaticMethod(string className, string methodName, object[] parameters)
-	{
-		// Get the Type of the class
-		Type type = Type.GetType(className);
-
-		if (type == null)
-		{
-			Debug.LogError($"Class {className} not found.");
-			return null;
-		}
-
-		// Get the MethodInfo of the static method
-		MethodInfo method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
-		if (method == null)
-		{
-			Debug.LogError($"Method {methodName} not found in class {className}.");
-			return null;
-		}
-
-		try
-		{
-			// Invoke the method with parameters and return the result
-			Debug.LogError($"Calling Method {methodName} in class {className} with {parameters.Length} parameters");
-			return method.Invoke(null, parameters); // Pass `null` for the instance since it's a static method
-		}
-		catch (Exception ex)
-		{
-			Debug.LogError($"Failed Calling Method {methodName} in class {className} with: {ex.Message}");
-		}
-
-		return null;
 	}
 
 	private static Regex pattern = new Regex("^(gi|go)_\\d+$");
