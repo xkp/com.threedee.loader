@@ -409,7 +409,7 @@ public class BigGameLoader
 				}
 			}
 
-			foreach (var gok in index.indexedObjects)
+			foreach (var gok in index.Entries)
 			{
 				if (!allGameItems.ContainsKey(gok.Key))
 					toRemove.Add(gok.Value.gameObject);
