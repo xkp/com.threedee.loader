@@ -151,7 +151,7 @@ public interface IBGModule
 	void Build();
 	void Cleanup();
 
-	bool CreateItem(GameItem item, BigGameItem template);
+	bool CreateItem(GameItem item, BigGameItem template, out GameObject go);
 	bool UpdateItem(GameItem item);
 }
 
@@ -193,8 +193,9 @@ public class BaseBGModel : IBGModule
 	{
 	}
 
-	public virtual bool CreateItem(GameItem item, BigGameItem template)
+	public virtual bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
 	{
+		go = null;
 		return false;
 	}
 

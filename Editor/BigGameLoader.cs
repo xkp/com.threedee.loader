@@ -381,13 +381,10 @@ public class BigGameLoader
 			module.Init(modules, game);
 		}
 
+		var index = GetIndex();
+
 		if (game.GameItems != null)
 		{
-			var allGameObjects = GameObject
-				.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
-				.Where(g => pattern.IsMatch(g.name))
-				.ToDictionary(g => g.name);
-
 			var allGameItems = new Dictionary<string, GameItem>();
 
 			//Build update
@@ -396,11 +393,8 @@ public class BigGameLoader
 			var toRemove = new List<GameObject>();
 			foreach (var item in game.GameItems)
 			{
-				var dataKey = $"gi_{item.Id}";
-				allGameItems[dataKey] = item;
-
 				var existingObject = null as GameObject;
-				if (allGameObjects.TryGetValue(dataKey, out GameObject bgo))
+				if (index.TryGetValue(item, out GameObject bgo))
 				{
 					existingObject = bgo.gameObject;
 				}
@@ -415,7 +409,7 @@ public class BigGameLoader
 				}
 			}
 
-			foreach (var gok in allGameObjects)
+			foreach (var gok in index.indexedObjects)
 			{
 				if (!allGameItems.ContainsKey(gok.Key))
 					toRemove.Add(gok.Value.gameObject);
@@ -452,6 +446,7 @@ public class BigGameLoader
 
 	private static void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
 	{
+		var index = GetIndex();
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
 		{
@@ -459,7 +454,8 @@ public class BigGameLoader
 			if (template != null)
 			{
 				//give the module a chance for custom importing
-				if (!module.CreateItem(item, template))
+				GameObject go = null;
+				if (!module.CreateItem(item, template, out go))
 				{
 					//revert to prefab
 					var prefabName = Path.GetFileNameWithoutExtension(template.prefab);
@@ -486,7 +482,31 @@ public class BigGameLoader
 						UpdateGameObject(item, instance); 
 					}
 				}
+
+				index.Add(item, go);
 			}
 		}
+	}
+
+	public static GameObjectIndex GetIndex()
+	{
+		string path = "Assets/Big Game/BigGameIndex.asset";
+
+		var index = AssetDatabase.LoadAssetAtPath<GameObjectIndex>(path);
+		if (index != null)
+			return index;
+
+		// Instantiate a new GameConfig asset
+		index = ScriptableObject.CreateInstance<GameObjectIndex>();
+
+		// Ensure we don't overwrite an existing file
+		//path = AssetDatabase.GenerateUniqueAssetPath(path);
+
+		// Create and save it
+		AssetDatabase.CreateAsset(index, path);
+		AssetDatabase.SaveAssets();
+		AssetDatabase.Refresh();
+		
+		return index;
 	}
 }
