@@ -478,14 +478,22 @@ public class BigGameLoader
 						}
 
 						GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-						instance.name = $"gi_{item.Id}";
-						UpdateGameObject(item, instance); 
+						UpdateGameObject(item, instance);
+
+						go = instance;
 					}
 				}
 
-				index.Add(item, go);
+				AddToIndex(index, item, go);
 			}
 		}
+	}
+
+	private static void AddToIndex(GameObjectIndex index, GameItem item, GameObject go)
+	{
+		index.Add(item, go);
+		EditorUtility.SetDirty(index);
+		AssetDatabase.SaveAssets();
 	}
 
 	public static GameObjectIndex GetIndex()
