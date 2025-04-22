@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class GameObjectIndex : ScriptableObject
+public class GameObjectIndex : ScriptableObject, ISerializationCallbackReceiver
 {
 	[System.Serializable]
 	private struct Entry
@@ -29,6 +29,16 @@ public class GameObjectIndex : ScriptableObject
 	public GameObject Get(string key)
 	{
 		_dict.TryGetValue(key, out var prefab);
+		return prefab;
+	}
+
+	public GameObject Remove(string key)
+	{
+		if (_dict.TryGetValue(key, out var prefab))
+		{
+			_dict.Remove(key);
+		}
+
 		return prefab;
 	}
 

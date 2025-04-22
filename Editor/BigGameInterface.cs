@@ -152,7 +152,7 @@ public interface IBGModule
 	void Cleanup();
 
 	bool CreateItem(GameItem item, BigGameItem template, out GameObject go);
-	bool UpdateItem(GameItem item);
+	bool UpdateItem(GameItem item, GameObject go);
 }
 
 public interface IBGGameModule
@@ -171,7 +171,7 @@ public class BaseBGModel : IBGModule
 {
 	public BigGameModule Model { get; set; }
 
-	public virtual void InitModules(IEnumerable<IBGModule> modules, BigGame game)
+	public virtual void Init(IEnumerable<IBGModule> modules, BigGame game)
 	{
 		_game = game;
 		_modules = modules;
@@ -182,11 +182,6 @@ public class BaseBGModel : IBGModule
 				return true;
 			return false;
 		}) as IBGGameModule;
-
-	}
-
-	public virtual void Init(IEnumerable<IBGModule> modules, BigGame game)
-	{
 	}
 
 	public virtual void ConfigProject()
@@ -228,7 +223,7 @@ public class BaseBGModel : IBGModule
 		return false;
 	}
 
-	public virtual bool UpdateItem(GameItem item)
+	public virtual bool UpdateItem(GameItem item, GameObject go)
 	{
 		return false;
 	}

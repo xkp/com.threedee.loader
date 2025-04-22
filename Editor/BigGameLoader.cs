@@ -217,7 +217,24 @@ public class BigGameLoader
 			{
 				string key = property.Name;
 				JToken value = property.Value;
-				result[key] = value.ToObject<object>();
+				switch (value.Type)
+				{
+					case JTokenType.String:
+						result[key] = (string)value;
+						break;
+					case JTokenType.Integer:
+						result[key] = (int)value;
+						break;
+					case JTokenType.Float:
+						result[key] = (float)value;
+						break;
+					case JTokenType.Boolean:
+						result[key] = (bool)value;
+						break;
+					default:
+						Debug.Log($"INVALID VALUE TYPE {value.Type}");
+						break;
+				}
 			}
 		}
 
@@ -390,20 +407,20 @@ public class BigGameLoader
 			//Build update
 			var toAdd = new List<GameItem>();
 			var toUpdate = new List<Tuple<GameItem, GameObject>>();
-			var toRemove = new List<GameObject>();
+			var toRemove = new List<string>();
 			foreach (var item in game.GameItems)
 			{
+				allGameItems[item.Id.ToString()] = item;
+
 				var existingObject = null as GameObject;
 				if (index.TryGetValue(item, out GameObject bgo))
 				{
-					existingObject = bgo.gameObject;
-				}
+					if (bgo != null)
+						existingObject = bgo;
 
-				if (existingObject != null)
-				{
 					toUpdate.Add(new Tuple<GameItem, GameObject>(item, existingObject));
 				}
-				else
+				else 
 				{
 					toAdd.Add(item);
 				}
@@ -412,19 +429,23 @@ public class BigGameLoader
 			foreach (var gok in index.Entries)
 			{
 				if (!allGameItems.ContainsKey(gok.Key))
-					toRemove.Add(gok.Value.gameObject);
+					toRemove.Add(gok.Key);
 			}
 
 			//Apply update
-			foreach (var go in toRemove)
+			foreach (var tr in toRemove)
 			{
-				GameObject.Destroy(go);
+				GameObject go = index.Remove(tr);
+				if (go != null)
+				{
+					GameObject.Destroy(go);
+				}
 			}
 
 			foreach (var gi in toAdd)
 			{
 				var module = GetModuleById(modules, gi.ModuleId);
-				if (module == null || !module.UpdateItem(gi))
+				if (module != null)
 				{
 					CreateGameObject(gi, modules);
 				}
@@ -432,16 +453,24 @@ public class BigGameLoader
 
 			foreach (var goi in toUpdate)
 			{
-				UpdateGameObject(goi.Item1, goi.Item2);
+				var module = GetModuleById(modules, goi.Item1.ModuleId);
+				if (module != null)
+				{
+					module.UpdateItem(goi.Item1, goi.Item2);
+					UpdateGameObject(goi.Item1, goi.Item2);
+				}
 			}
 		}
 	}
 
 	private static void UpdateGameObject(GameItem item, GameObject go)
 	{
-		go.transform.position = item.Position; 
-		go.transform.rotation = item.Rotation;
-		go.transform.localScale = item.Scale;
+		if (go != null)
+		{
+			go.transform.position = item.Position;
+			go.transform.rotation = item.Rotation;
+			go.transform.localScale = item.Scale;
+		}
 	}
 
 	private static void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
