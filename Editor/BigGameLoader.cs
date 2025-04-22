@@ -523,6 +523,8 @@ public class BigGameLoader
 		index.Add(item, go);
 		EditorUtility.SetDirty(index);
 		AssetDatabase.SaveAssets();
+
+		Debug.Log($"Added object to index, {index.Entries.Count} objects");
 	}
 
 	public static GameObjectIndex GetIndex()
