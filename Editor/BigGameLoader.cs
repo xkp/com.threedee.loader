@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Unity.Plastic.Newtonsoft.Json;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 
 public class BigGameLoader
@@ -52,7 +53,7 @@ public class BigGameLoader
 		}
 	}
 
-	private static IBGModule GetModuleById(IEnumerable<IBGModule> modules, int moduleId)
+	private static IBGModule GetModuleById(IEnumerable<IBGModule> modules, string moduleId)
 	{
 		return modules.FirstOrDefault(m => m.Model.id == moduleId);
 	}
@@ -146,7 +147,7 @@ public class BigGameLoader
 		var userItemTemplatesNodes = root["userItemTemplates"] as JArray;
 		foreach (JObject userItemTemplateNode in userItemTemplatesNodes)
 		{
-			var templateModuleId = (int)userItemTemplateNode["_moduleId"];
+			var templateModuleId = userItemTemplateNode["_moduleId"]?.ToString();
 			var templateModule = modules.FirstOrDefault(m => m.Model.id == templateModuleId);
 			if (templateModule == null)
 			{
@@ -174,10 +175,10 @@ public class BigGameLoader
 	private static GameItem LoadGameItem(JObject itemNode, BigGame game)
 	{
 		var result = new GameItem();
-		result.Id = (int)itemNode["id"];
+		result.Id = itemNode["id"]?.ToString(); 
 		result.Name = itemNode["name"]?.ToString();
-		result.ModuleId = (int)itemNode["moduleId"];
-		result.TemplateId = (int)itemNode["templateId"];
+		result.ModuleId = itemNode["moduleId"]?.ToString();
+		result.TemplateId = itemNode["templateId"]?.ToString();
 		result.Values = LoadValues(itemNode["values"] as JObject);
 		result.Position = LoadVector(itemNode["position"] as JArray);
 		result.Rotation = LoadQuaternion(itemNode["rotation"] as JArray);
@@ -244,7 +245,7 @@ public class BigGameLoader
 	private static BigGameModule LoadModule(JObject moduleNode)
 	{
 		var result = new BigGameModule();
-		result.id = (int)moduleNode["id"];
+		result.id = moduleNode["id"].ToString();
 		result.name = moduleNode["name"]?.ToString();
 		result.itemGroups = LoadItemGroups(moduleNode["itemGroups"] as JArray);
 		result.controller = moduleNode["controller"]?.ToString();
@@ -293,7 +294,7 @@ public class BigGameLoader
 	private static BigGameItem LoadBigGameItem(JObject templateNode)
 	{
 		var result = new BigGameItem();
-		result.id = (int)templateNode["id"];
+		result.id = templateNode["id"].ToString();
 		result.name = templateNode["name"]?.ToString();
 		result.description = templateNode["description"]?.ToString();
 		result.icon = templateNode["image"]?.ToString();
@@ -380,7 +381,27 @@ public class BigGameLoader
 		return result;
 	}
 
-	private static Regex pattern = new Regex("^(gi|go)_\\d+$");
+	public static Dictionary<string, GameObject> GetGameObjectsIndex()
+	{
+		Dictionary<string, GameObject> guidToObjectMap = new Dictionary<string, GameObject>();
+
+		// Find all game objects in the scene
+		GameObject[] allGameObjects = GameObject.FindObjectsOfType<GameObject>();
+
+		// Iterate over each game object
+		foreach (GameObject go in allGameObjects)
+		{
+			// Check if the game object has a name matching a GUID
+			if (System.Guid.TryParse(go.name, out System.Guid guid))
+			{
+				// If it's a valid GUID, add it to the dictionary
+				guidToObjectMap[guid.ToString()] = go;
+			}
+		}
+
+		return guidToObjectMap;
+	}
+
 	public static void Update(string gameItemPath, string modulePath)
 	{
 		string jsonContent = File.ReadAllText(gameItemPath);
@@ -398,8 +419,7 @@ public class BigGameLoader
 			module.Init(modules, game);
 		}
 
-		var index = GetIndex();
-
+		var index = GetGameObjectsIndex();
 		if (game.GameItems != null)
 		{
 			var allGameItems = new Dictionary<string, GameItem>();
@@ -410,10 +430,10 @@ public class BigGameLoader
 			var toRemove = new List<string>();
 			foreach (var item in game.GameItems)
 			{
-				allGameItems[item.Id.ToString()] = item;
+				allGameItems[item.Id] = item;
 
 				var existingObject = null as GameObject;
-				if (index.TryGetValue(item, out GameObject bgo))
+				if (index.TryGetValue(item.Name, out GameObject bgo))
 				{
 					if (bgo != null)
 						existingObject = bgo;
@@ -426,16 +446,17 @@ public class BigGameLoader
 				}
 			}
 
-			foreach (var gok in index.Entries)
+			foreach (var gok in index.Keys)
 			{
-				if (!allGameItems.ContainsKey(gok.Key))
-					toRemove.Add(gok.Key);
+				if (!allGameItems.ContainsKey(gok))
+					toRemove.Add(gok);
 			}
 
 			//Apply update
 			foreach (var tr in toRemove)
 			{
-				GameObject go = index.Remove(tr);
+				
+				GameObject go = index[tr];
 				if (go != null)
 				{
 					GameObject.Destroy(go);
@@ -475,7 +496,6 @@ public class BigGameLoader
 
 	private static void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
 	{
-		var index = GetIndex();
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
 		{
@@ -513,39 +533,15 @@ public class BigGameLoader
 					}
 				}
 
-				AddToIndex(index, item, go);
+				if (go == null)
+				{
+					//create a tag game object to represent this game item
+					go = new GameObject(item.Id);
+					go.hideFlags = HideFlags.NotEditable;
+				}
+
+				go.name = item.Id; //just in case
 			}
 		}
-	}
-
-	private static void AddToIndex(GameObjectIndex index, GameItem item, GameObject go)
-	{
-		index.Add(item, go);
-		EditorUtility.SetDirty(index);
-		AssetDatabase.SaveAssets();
-
-		Debug.Log($"Added object to index, {index.Entries.Count} objects");
-	}
-
-	public static GameObjectIndex GetIndex()
-	{
-		string path = "Assets/Big Game/BigGameIndex.asset";
-
-		var index = AssetDatabase.LoadAssetAtPath<GameObjectIndex>(path);
-		if (index != null)
-			return index;
-
-		// Instantiate a new GameConfig asset
-		index = ScriptableObject.CreateInstance<GameObjectIndex>();
-
-		// Ensure we don't overwrite an existing file
-		//path = AssetDatabase.GenerateUniqueAssetPath(path);
-
-		// Create and save it
-		AssetDatabase.CreateAsset(index, path);
-		AssetDatabase.SaveAssets();
-		AssetDatabase.Refresh();
-		
-		return index;
 	}
 }

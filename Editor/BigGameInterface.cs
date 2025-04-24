@@ -16,12 +16,7 @@ public class BigGame
 
 	public List<GameItem> GameItems { get; set; } = new List<GameItem>();
 
-	public BigGameModule GetModule(string module)
-	{
-		return Modules.FirstOrDefault(m => m.name == module);
-	}
-
-	public BigGameModule GetModule(int id)
+	public BigGameModule GetModule(string id)
 	{
 		return Modules.FirstOrDefault(m => m.id == id);
 	}
@@ -35,14 +30,14 @@ public class BigGame
 
 public class BigGameModule
 {
-	public int id { get; set; }
+	public string id { get; set; }
 	public string name { get; set; }
 	public string type { get; set; }
 	public string controller { get; set; }
 	public List<BigGameItemGroup> itemGroups { get; set; }
 	public List<BigGameItem> userTemplates { get; set; } = new List<BigGameItem>();
 
-	public BigGameItem GetTemplate(int id)
+	public BigGameItem GetTemplate(string id)
 	{
 		foreach (var group in itemGroups)
 		{
@@ -90,7 +85,7 @@ public class BigGameProperty
 
 public class BigGameItem
 {
-	public int id { get; set; }
+	public string id { get; set; }
 	public string name { get; set; }
 	public string description { get; set; }
 	public string icon { get; set; }
@@ -117,10 +112,10 @@ public class BigGameItem
 
 public class GameItem
 {
-	public int Id { get; set; }
+	public string Id { get; set; }
 	public string Name { get; set; }
-	public int ModuleId { get; set; }
-	public int TemplateId { get; set; }
+	public string ModuleId { get; set; }
+	public string TemplateId { get; set; }
 	public Dictionary<string, object> Values { get; set; }
 	public Vector3 Position { get; set; }
 	public Quaternion Rotation { get; set; }
@@ -144,7 +139,7 @@ public class GameItem
 public interface IBGModule
 {
 	BigGameModule Model { get; set; }
-	BigGameItem GetTemplateItem(int id);
+	BigGameItem GetTemplateItem(string id);
 
 	void Init(IEnumerable<IBGModule> modules, BigGame game);
 	void ConfigProject();
@@ -202,7 +197,7 @@ public class BaseBGModel : IBGModule
 	{
 	}
 
-	public BigGameItem GetTemplateItem(int id)
+	public BigGameItem GetTemplateItem(string id)
 	{
 		if (Model == null)
 			return null;
