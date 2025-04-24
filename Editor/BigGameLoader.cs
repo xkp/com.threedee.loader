@@ -455,10 +455,19 @@ public class BigGameLoader
 			//Apply update
 			foreach (var tr in toRemove)
 			{
-				
 				GameObject go = index[tr];
 				if (go != null)
 				{
+					//use case: removing non-prefab objects after the game item is deleted
+					if (!string.IsNullOrEmpty(go.tag) && System.Guid.TryParse(go.tag, out Guid tempateId))
+					{
+						var module = GetModuleByTemplateId(modules, tempateId.ToString());
+						if (module != null)
+						{
+							module.RemoveItem(go);
+						}
+					}
+
 					GameObject.Destroy(go);
 				}
 			}
@@ -482,6 +491,18 @@ public class BigGameLoader
 				}
 			}
 		}
+	}
+
+	private static IBGModule GetModuleByTemplateId(IEnumerable<IBGModule> modules, string templateId)
+	{
+		foreach (var module in modules)
+		{
+			var template = module.GetTemplateItem(templateId);
+			if (template != null)
+				return module;
+		}
+
+		return null;
 	}
 
 	private static void UpdateGameObject(GameItem item, GameObject go)
@@ -537,7 +558,7 @@ public class BigGameLoader
 				{
 					//create a tag game object to represent this game item
 					go = new GameObject(item.Id);
-					go.hideFlags = HideFlags.NotEditable;
+					go.hideFlags= HideFlags.NotEditable;
 				}
 
 				go.name = item.Id; //just in case

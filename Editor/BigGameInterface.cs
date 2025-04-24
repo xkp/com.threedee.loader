@@ -148,6 +148,7 @@ public interface IBGModule
 
 	bool CreateItem(GameItem item, BigGameItem template, out GameObject go);
 	bool UpdateItem(GameItem item, GameObject go);
+	void RemoveItem(GameObject go);
 }
 
 public interface IBGGameModule
@@ -221,6 +222,10 @@ public class BaseBGModel : IBGModule
 	public virtual bool UpdateItem(GameItem item, GameObject go)
 	{
 		return false;
+	}
+
+	public virtual void RemoveItem(GameObject go)
+	{
 	}
 
 	public GameObject GetPrefab(string prefabName)
