@@ -175,7 +175,7 @@ public class BigGameLoader
 	private static GameItem LoadGameItem(JObject itemNode, BigGame game)
 	{
 		var result = new GameItem();
-		result.Id = itemNode["id"]?.ToString(); 
+		result.Id = itemNode["id"]?.ToString();
 		result.Name = itemNode["name"]?.ToString();
 		result.ModuleId = itemNode["moduleId"]?.ToString();
 		result.TemplateId = itemNode["templateId"]?.ToString();
@@ -190,6 +190,9 @@ public class BigGameLoader
 
 	private static Quaternion LoadQuaternion(JArray values)
 	{
+		if (values == null)
+			return new Quaternion();
+
 		return new Quaternion()
 		{
 			x = (float)values[0],
@@ -201,6 +204,9 @@ public class BigGameLoader
 
 	private static Vector3 LoadVector(JArray values)
 	{
+		if (values == null)
+			return new Vector3();
+
 		return new Vector3()
 		{
 			x = (float)values[0],
@@ -328,23 +334,23 @@ public class BigGameLoader
 
 			result.Add(newProp);
 		}
-		return result; 
-	}
-
-/*	private static List<BigGameEnumItem> LoadEnumItems(JArray enumItems)
-	{
-		var result = new List<BigGameEnumItem>();
-		foreach (var enumItem in enumItems)
-		{
-			var newItem = new BigGameEnumItem();
-			newItem.name = enumItem["name"]?.ToString();
-			newItem.icon = enumItem["icon"]?.ToString();
-
-			result.Add(newItem);
-		}
 		return result;
 	}
-*/
+
+	/*	private static List<BigGameEnumItem> LoadEnumItems(JArray enumItems)
+		{
+			var result = new List<BigGameEnumItem>();
+			foreach (var enumItem in enumItems)
+			{
+				var newItem = new BigGameEnumItem();
+				newItem.name = enumItem["name"]?.ToString();
+				newItem.icon = enumItem["icon"]?.ToString();
+
+				result.Add(newItem);
+			}
+			return result;
+		}
+	*/
 	private static BigGamePropertyType GetPropType(string typeName)
 	{
 		switch (typeName)
@@ -395,7 +401,7 @@ public class BigGameLoader
 			if (System.Guid.TryParse(go.name, out System.Guid guid))
 			{
 				// If it's a valid GUID, add it to the dictionary
-				guidToObjectMap[guid.ToString()] = go;
+				guidToObjectMap[guid.ToString().ToUpper()] = go;
 			}
 		}
 
@@ -440,7 +446,7 @@ public class BigGameLoader
 
 					toUpdate.Add(new Tuple<GameItem, GameObject>(item, existingObject));
 				}
-				else 
+				else
 				{
 					toAdd.Add(item);
 				}
@@ -558,7 +564,8 @@ public class BigGameLoader
 				{
 					//create a tag game object to represent this game item
 					go = new GameObject(item.Id);
-					go.hideFlags= HideFlags.NotEditable;
+					go.tag = template.id;
+					go.hideFlags = HideFlags.NotEditable;
 				}
 
 				go.name = item.Id; //just in case

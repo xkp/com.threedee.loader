@@ -247,6 +247,17 @@ public class BaseBGModel : IBGModule
 		return GameObject.Find(instanceName);
 	}
 
+	protected void HideObjects(params GameObject[] objects)
+	{
+		foreach (var go in objects)
+		{
+			if (go == null)
+				continue;
+
+			go.hideFlags = HideFlags.HideInHierarchy;
+		}
+	}
+
 	protected void DestroyObjects(params GameObject[] objects)
 	{
 		foreach (var go in objects)
