@@ -433,7 +433,7 @@ public class BigGameLoader
 				allGameItems[item.Id] = item;
 
 				var existingObject = null as GameObject;
-				if (index.TryGetValue(item.Name, out GameObject bgo))
+				if (index.TryGetValue(item.Id, out GameObject bgo))
 				{
 					if (bgo != null)
 						existingObject = bgo;
@@ -468,7 +468,7 @@ public class BigGameLoader
 						}
 					}
 
-					GameObject.Destroy(go);
+					GameObject.DestroyImmediate(go);
 				}
 			}
 
