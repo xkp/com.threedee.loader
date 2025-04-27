@@ -267,7 +267,7 @@ public class ThreedeeLoader
 			}
 
 			Console.WriteLine($"adding: {assetPath}");
-			ReplaceMaterials(modelPrefab);
+			//ReplaceMaterials(modelPrefab);
 
 
 			result[assetPath] = modelPrefab;
