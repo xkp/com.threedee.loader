@@ -465,10 +465,14 @@ public class ThreedeeLoader
 		foreach (string guid in guids)
 		{
 			string path = AssetDatabase.GUIDToAssetPath(guid);
-			string assetPathName = System.IO.Path.GetFileNameWithoutExtension(path);
+			string assetPathName = Path.GetFileNameWithoutExtension(path);
+
+			Debug.LogError("path: " + path);
+			Debug.LogError("assetPathName: " + assetPathName);
 
 			if (assetPathName == assetPath)
 			{
+				Debug.LogError("AssetDatabase.LoadAssetAtPath: " + path);
 				return AssetDatabase.LoadAssetAtPath<Material>(path); 
 			}
 		}
