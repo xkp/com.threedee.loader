@@ -462,14 +462,9 @@ public class ThreedeeLoader
 		string assetPath = $"{folder}/{assetName}.mat".ToLower();
 		string[] guids = AssetDatabase.FindAssets(assetName + " t:Material");
 
-		Debug.LogError("guids: " + guids.Length.ToString());
-
 		foreach (string guid in guids)
 		{
 			string path = AssetDatabase.GUIDToAssetPath(guid).ToLower();
-
-			Debug.LogError("path: " + path);
-			Debug.LogError("assetPath: " + assetPath);
 
 			if (path == assetPath)
 			{
@@ -506,7 +501,7 @@ public class ThreedeeLoader
 
 				Debug.Log($"Material to be replaced: {originalMaterial?.name}");
 
-				Material newMaterial = FindAssetByExactName(originalMaterial?.name, "Assets/Big Game/Materials");
+				Material newMaterial = FindAssetByExactName(originalMaterial.name, "Assets/Big Game/Materials");
 				if (newMaterial != null)
 				{
 					Debug.Log($"Replacing material {originalMaterial.name} with {newMaterial.name}.");
@@ -514,13 +509,14 @@ public class ThreedeeLoader
 				}
 				else
 				{
-					Debug.Log($"Material {originalMaterial.name} found, but could not be loaded at path: {originalMaterial?.name}.");
+					Debug.Log($"Material {originalMaterial.name} not found.");
 				}
 			}
 
 			renderer.sharedMaterials = materials;
 		}
 
+		EditorUtility.SetDirty(meshObject);
 		Debug.Log("Material replacement completed for: " + meshObject.name);
 	}
 }
