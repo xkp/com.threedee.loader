@@ -254,7 +254,7 @@ public class BaseBGModel : IBGModule
 			if (go == null)
 				continue;
 
-			go.hideFlags = HideFlags.HideInHierarchy;
+			go.SetActive(false);
 		}
 	}
 
