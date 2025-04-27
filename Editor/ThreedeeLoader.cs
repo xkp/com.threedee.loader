@@ -457,6 +457,25 @@ public class ThreedeeLoader
 		return PrefabUtility.InstantiatePrefab(prefab) as GameObject;
 	}
 
+	public static Material FindAssetByExactName(string assetName, string folder)
+	{
+		string assetPath = Path.Combine(folder, assetName);
+		string[] guids = AssetDatabase.FindAssets($"name:{assetName} t:Material");
+
+		foreach (string guid in guids)
+		{
+			string path = AssetDatabase.GUIDToAssetPath(guid);
+			string assetPathName = System.IO.Path.GetFileNameWithoutExtension(path);
+
+			if (assetPathName == assetPath)
+			{
+				return AssetDatabase.LoadAssetAtPath<Material>(path); 
+			}
+		}
+
+		return null; // No perfect match
+	}
+
 	public static void ReplaceMaterials(GameObject meshObject)
 	{
 		if (meshObject == null)
@@ -474,7 +493,7 @@ public class ThreedeeLoader
 			for (int i = 0; i < materials.Length; i++)
 			{
 				Material originalMaterial = materials[i];
-				if (originalMaterial == null)
+				if (originalMaterial == null || string.IsNullOrEmpty(originalMaterial.name))
 				{
 					Debug.LogWarning("Renderer has a null material, skipping.");
 					continue;
@@ -482,28 +501,15 @@ public class ThreedeeLoader
 
 				Debug.Log($"Material to be replaced: {originalMaterial?.name}");
 
-				string[] materialGuids = AssetDatabase.FindAssets(originalMaterial.name + " t:Material", new string[] { "Assets/Big Game/Materials" });
-
-				Debug.Log($"Found: {materialGuids?.Length}");
-
-				if (materialGuids.Length > 0)
+				Material newMaterial = FindAssetByExactName(originalMaterial?.name, "Assets/Big Game/Materials");
+				if (newMaterial != null)
 				{
-					string materialPath = AssetDatabase.GUIDToAssetPath(materialGuids[0]);
-					Material newMaterial = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-
-					if (newMaterial != null)
-					{
-						Debug.Log($"Replacing material {originalMaterial.name} with {newMaterial.name}.");
-						materials[i] = newMaterial;
-					}
-					else
-					{
-						Debug.Log($"Material {originalMaterial.name} found, but could not be loaded at path: {materialPath}.");
-					}
+					Debug.Log($"Replacing material {originalMaterial.name} with {newMaterial.name}.");
+					materials[i] = newMaterial;
 				}
 				else
 				{
-					Debug.Log($"No matching material found for {originalMaterial.name}.");
+					Debug.Log($"Material {originalMaterial.name} found, but could not be loaded at path: {originalMaterial?.name}.");
 				}
 			}
 

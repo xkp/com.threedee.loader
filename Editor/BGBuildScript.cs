@@ -46,6 +46,8 @@ public class BGBuildScript
 		Console.WriteLine("Generating lightmaps...");
 		GenerateLightmaps();
 
+		UpdateNavMeshes();
+
 		Console.WriteLine("Finishing...");
 		EditorSceneManager.SaveScene(scene);
 
@@ -68,6 +70,21 @@ public class BGBuildScript
 		Debug.Log("Build completed. Build located at: " + buildPath);
 	}
 
+	private static void UpdateNavMeshes()
+	{
+		//build nav meshes
+		NavMeshSurface[] surfaces = GameObject.FindObjectsByType<NavMeshSurface>(FindObjectsSortMode.None);
+
+		// Iterate over each surface and rebuild its nav mesh
+		foreach (NavMeshSurface surface in surfaces)
+		{
+			if (surface != null)
+			{
+				surface.BuildNavMesh();
+			}
+		}
+	}
+
 	public static void UpdateGame()
 	{
 		string inputFolder;
@@ -87,17 +104,7 @@ public class BGBuildScript
 		Console.WriteLine("Loading environment assets...");
 		BigGameLoader.Update(gameItemPath, modulePath);
 
-		//build nav meshes
-		NavMeshSurface[] surfaces = GameObject.FindObjectsOfType<NavMeshSurface>();
-
-		// Iterate over each surface and rebuild its nav mesh
-		foreach (NavMeshSurface surface in surfaces)
-		{
-			if (surface != null)
-			{
-				surface.BuildNavMesh();
-			}
-		}       
+		UpdateNavMeshes();
 		
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
