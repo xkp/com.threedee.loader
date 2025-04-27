@@ -6,7 +6,6 @@ using UnityEngine;
 using System;
 using System.Linq;
 using UnityEngine.SceneManagement;
-using Assets.Editor;
 using Unity.AI.Navigation;
 
 public class BGBuildScript
