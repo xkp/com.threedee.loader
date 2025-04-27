@@ -459,7 +459,7 @@ public class ThreedeeLoader
 
 	public static Material FindAssetByExactName(string assetName, string folder)
 	{
-		string assetPath = Path.Combine(folder, assetName + ".mat" ).ToLower();
+		string assetPath = $"{folder}/{assetName}.mat".ToLower();
 		string[] guids = AssetDatabase.FindAssets(assetName + " t:Material");
 
 		Debug.LogError("guids: " + guids.Length.ToString());
