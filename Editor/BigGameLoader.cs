@@ -29,6 +29,23 @@ public class BigGameLoader
 			return;
 		}
 
+		//update settings 
+		string assetPath = "Assets/Big Game/BigGameSettings.asset";
+		BigGameSettings settings = AssetDatabase.LoadAssetAtPath<BigGameSettings>(assetPath);
+		if (settings != null)
+		{
+			// Modify the settings
+			settings.GameName = game.Name;
+			EditorUtility.SetDirty(settings); // Mark asset as dirty so Unity knows it has changed
+			AssetDatabase.SaveAssets();
+			Debug.Log("GameSettings modified and saved.");
+		}
+		else
+		{
+			Debug.LogError("GameSettings asset not found at: " + assetPath);
+		}
+
+		//run the modules
 		foreach (var module in modules)
 		{
 			module.Init(modules, game);
@@ -133,6 +150,8 @@ public class BigGameLoader
 	private static BigGame LoadGame(JObject root, string modulePath, out IEnumerable<IBGModule> modules)
 	{
 		var result = new BigGame();
+		result.Name = root["name"]?.ToString();
+
 		var usedModules = new List<string>();
 		var modulesNode = root["modules"] as JArray;
 
@@ -465,9 +484,10 @@ public class BigGameLoader
 				if (go != null)
 				{
 					//use case: removing non-prefab objects after the game item is deleted
-					if (!string.IsNullOrEmpty(go.tag) && System.Guid.TryParse(go.tag, out Guid tempateId))
+					var gi = go.GetComponent<GameItemInfo>();
+					if (gi != null)
 					{
-						var module = GetModuleByTemplateId(modules, tempateId.ToString());
+						var module = GetModuleByTemplateId(modules, gi.TemplateId);
 						if (module != null)
 						{
 							module.RemoveItem(go);
@@ -564,7 +584,8 @@ public class BigGameLoader
 				{
 					//create a tag game object to represent this game item
 					go = new GameObject(item.Id);
-					go.tag = template.id;
+					var info = go.AddComponent<GameItemInfo>();
+					info.TemplateId = item.TemplateId;
 					go.hideFlags = HideFlags.NotEditable;
 				}
 
