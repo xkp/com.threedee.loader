@@ -29,22 +29,6 @@ public class BigGameLoader
 			return;
 		}
 
-		//update settings 
-		string assetPath = "Assets/Big Game/BigGameSettings.asset";
-		BigGameSettings settings = AssetDatabase.LoadAssetAtPath<BigGameSettings>(assetPath);
-		if (settings != null)
-		{
-			// Modify the settings
-			settings.GameName = game.Name;
-			EditorUtility.SetDirty(settings); // Mark asset as dirty so Unity knows it has changed
-			AssetDatabase.SaveAssets();
-			Debug.Log("GameSettings modified and saved.");
-		}
-		else
-		{
-			Debug.LogError("GameSettings asset not found at: " + assetPath);
-		}
-
 		//run the modules
 		foreach (var module in modules)
 		{
@@ -484,10 +468,10 @@ public class BigGameLoader
 				if (go != null)
 				{
 					//use case: removing non-prefab objects after the game item is deleted
-					var gi = go.GetComponent<GameItemInfo>();
-					if (gi != null)
+					string templateId = GetTemplateIdFromObject(go);
+					if (!string.IsNullOrEmpty(templateId))
 					{
-						var module = GetModuleByTemplateId(modules, gi.TemplateId);
+						var module = GetModuleByTemplateId(modules, templateId);
 						if (module != null)
 						{
 							module.RemoveItem(go);
@@ -517,6 +501,29 @@ public class BigGameLoader
 				}
 			}
 		}
+	}
+
+	private static GameObject CreateIndexObject(string id, string templateId)
+	{
+		GameObject go = new GameObject(id);
+		go.name = id;
+
+		GameObject goi = new GameObject(templateId);
+		goi.transform.parent = go.transform;
+
+		return go;
+	}
+
+	private static string GetTemplateIdFromObject(GameObject go)
+	{
+		if (go.transform.childCount == 1)
+		{
+			var child = go.transform.GetChild(0);
+			if (System.Guid.TryParse(child.name, out Guid result))
+				return child.name;
+		}
+
+		return null;
 	}
 
 	private static IBGModule GetModuleByTemplateId(IEnumerable<IBGModule> modules, string templateId)
@@ -583,9 +590,7 @@ public class BigGameLoader
 				if (go == null)
 				{
 					//create a tag game object to represent this game item
-					go = new GameObject(item.Id);
-					var info = go.AddComponent<GameItemInfo>();
-					info.TemplateId = item.TemplateId;
+					go = CreateIndexObject(item.Id, item.TemplateId);
 					go.hideFlags = HideFlags.NotEditable;
 				}
 
