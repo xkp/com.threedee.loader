@@ -205,10 +205,18 @@ public class BaseBGModel : IBGModule
 
 		foreach (var group in Model.itemGroups)
 		{
-
 			var result = group.items.FirstOrDefault(x => x.id == id);
 			if (result != null)
 				return result;
+		}
+
+		if (Model.userTemplates != null)
+		{
+			foreach (var ut in Model.userTemplates)
+			{
+				if (ut.id == id)
+					return ut;
+			}
 		}
 
 		return null;

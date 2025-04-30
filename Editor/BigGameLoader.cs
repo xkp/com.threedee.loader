@@ -401,7 +401,7 @@ public class BigGameLoader
 		foreach (GameObject go in allGameObjects)
 		{
 			// Check if the game object has a name matching a GUID
-			if (System.Guid.TryParse(go.name, out System.Guid guid))
+			if (System.Guid.TryParse(go.name, out System.Guid guid) && go.transform.parent == null)
 			{
 				// If it's a valid GUID, add it to the dictionary
 				guidToObjectMap[guid.ToString().ToUpper()] = go;
