@@ -31,7 +31,7 @@ public class NodeAttribute
 
 public class ThreedeeLoader
 {
-	public static void Load(string inputFolder, string outputFolder) 
+	public static void Load(string inputFolder, string outputFolder)
 	{
 		Console.WriteLine("Loading environment assets...");
 		Dictionary<string, GameObject> envAssets = LoadEnvironmentAssets(inputFolder, outputFolder);
@@ -74,7 +74,7 @@ public class ThreedeeLoader
 			return null;
 		}
 
-		return result; 
+		return result;
 	}
 
 	private static List<ThreedeeNode> ReadChildren(JArray children)
@@ -255,6 +255,7 @@ public class ThreedeeLoader
 				importer.generateSecondaryUV = true;
 				importer.importNormals = ModelImporterNormals.Calculate;
 				importer.normalSmoothingAngle = 0;
+				importer.preserveHierarchy = true;
 
 				importer.SaveAndReimport();
 			}
@@ -304,9 +305,12 @@ public class ThreedeeLoader
 	{
 		Console.WriteLine($"CreateNode: {node?.MeshName}, meshes: {fbxLibrary.Count}");
 
-		GameObject instance = InstantiateProp(node.Attributes);
+		GameObject instance = InstantiateProp(node);
 		bool isPrefab = instance != null;
-		if (instance == null && node.MeshName != null && fbxLibrary.TryGetValue(GetMeshPath(node.MeshName), out GameObject prefab))
+		GameObject prefab = null;
+		bool isMesh = !string.IsNullOrEmpty(node.MeshName) && fbxLibrary.TryGetValue(GetMeshPath(node.MeshName), out prefab);
+
+		if (instance == null && node.MeshName != null && isMesh)
 		{
 			Console.WriteLine($"found prefab to instantiate: {node.MeshName}");
 			instance = PrefabUtility.InstantiatePrefab(prefab, parentTransform) as GameObject;
@@ -340,7 +344,7 @@ public class ThreedeeLoader
 			{
 				instance.transform.position = node.Transform.Position;
 				instance.transform.rotation = node.Transform.Rotation;
-					
+
 				if (!isPrefab) //td: avoid original scale
 					instance.transform.localScale = node.Transform.Scale;
 			}
@@ -360,12 +364,165 @@ public class ThreedeeLoader
 
 			if (node.Children != null)
 			{
+				var children = new List<ThreedeeNode>();
 				foreach (var child in node.Children)
+				{
+					if (!string.IsNullOrEmpty(child.MeshName) && !child.MeshName.ToLower().EndsWith(".fbx"))
+					{
+						if (child.Attributes?.Count > 0)
+						{
+							var attrGeom = ProcessAtributeGeometry(child, instance.transform, prefab, out bool removeGeometry);
+							if (attrGeom != null && removeGeometry)
+							{
+								GameObject.DestroyImmediate(attrGeom, true);
+							}
+						}
+						else
+						{
+							//This is the actual geometry already inserted
+						}
+					}
+					else
+					{
+						children.Add(child);
+					}
+				}
+
+				foreach (var child in children)
 				{
 					CreateSceneNode(child, fbxLibrary, instance.transform);
 				}
 			}
 		}
+	}
+
+	private static GameObject ProcessAtributeGeometry(ThreedeeNode child, Transform parent, GameObject prefab, out bool removeGeometry)
+	{
+		removeGeometry = false;
+
+		//find the submesh 
+		var t = prefab.transform.Find(child.MeshName);
+		if (t != null)
+		{
+			var mesh = t.GetComponent<MeshFilter>()?.sharedMesh;
+			if (mesh != null)
+			{
+				if (isQuadLight(child, out float intensity))
+				{
+					var lightsObject = new GameObject("QuadLights");
+					lightsObject.transform.parent = parent;
+					lightsObject.transform.localScale = new Vector3(1, 1, 1);
+
+					AddQuadLights(mesh, intensity, lightsObject.transform);
+					removeGeometry = true;
+				}
+			}
+
+			return t.gameObject;
+		}
+
+		return null;
+	}
+
+	private static bool isQuadLight(ThreedeeNode child, out float intensity)
+	{
+		intensity = 10.0f;
+		var attr = child.Attributes?.FirstOrDefault(a => a.Name == "translucent"); //TODO: add attributes 
+		return attr != null;
+	}
+
+	private static void AddQuadLights(Mesh mesh, float intensity, Transform parent)
+	{
+		Vector3[] vertices = mesh.vertices;
+		int[] triangles = mesh.triangles;
+
+		var used = new HashSet<int>();
+
+		for (int i = 0; i < triangles.Length; i += 3)
+		{
+			if (used.Contains(i)) continue;
+
+			int i0 = triangles[i];
+			int i1 = triangles[i + 1];
+			int i2 = triangles[i + 2];
+
+			int[] tri1 = { i0, i1, i2 };
+
+			// Try to find a matching triangle
+			for (int j = i + 3; j < triangles.Length; j += 3)
+			{
+				if (used.Contains(j)) continue;
+
+				int j0 = triangles[j];
+				int j1 = triangles[j + 1];
+				int j2 = triangles[j + 2];
+
+				int[] tri2 = { j0, j1, j2 };
+
+				// find a shared edge
+				for (int t1 = 0; t1 < 3; t1++)
+				{
+					int e1 = tri1[t1];
+					int e2 = tri1[(t1 + 1) % 3];
+
+					bool found = false;
+					for (int t2 = 0; t2 < 3; t2++)
+					{
+						int he1 = tri2[t2];
+						int he2 = tri2[(t2 + 1) % 3];
+
+						if (he1 == e2 && he2 == e1)
+						{
+							//found 
+							used.Add(i);
+							used.Add(j);
+
+							int e3 = tri1[(t1 + 2) % 3];
+							int he3 = tri2[(t2 + 2) % 3];
+							var quadVerts = new Vector3[4]
+							{
+								vertices[e2],
+								vertices[e3],
+								vertices[e1],
+								vertices[he3],
+							};
+
+							CreateAreaLight(quadVerts, parent);
+							found = true;
+							break;
+						}
+					}
+
+					if (found)
+						break;
+				}
+			}
+		}
+	}
+
+	private static void CreateAreaLight(Vector3[] quad, Transform parent)
+	{
+		Vector3 center = (quad[0] + quad[1] + quad[2] + quad[3]) / 4f;
+		Vector3 normal = Vector3.Cross(quad[1] - quad[0], quad[2] - quad[0]).normalized;
+		Vector3 up = normal;
+		Vector3 right = (quad[1] - quad[0]).normalized;
+		float width = Vector3.Distance(quad[0], quad[1]);
+		float height = Vector3.Distance(quad[1], quad[2]);
+
+		GameObject lightObj = new GameObject("Quad Area Light");
+		lightObj.transform.SetParent(parent);
+		lightObj.transform.position = parent.TransformPoint(center);
+		lightObj.transform.localScale = new Vector3(1, 1, 1);
+		lightObj.transform.rotation = Quaternion.LookRotation(normal);
+
+#if UNITY_EDITOR
+		var light = lightObj.AddComponent<Light>();
+		light.type = LightType.Rectangle;
+		light.areaSize = new Vector2(height, width);
+		light.intensity = 10f;
+		light.color = Color.white;
+		light.lightmapBakeType = LightmapBakeType.Baked;
+#endif
 	}
 
 	private static string GetMeshPath(string mesh)
@@ -396,7 +553,7 @@ public class ThreedeeLoader
 					Debug.LogWarning("Unknown attribute value: " + attribute.Value);
 				}
 				break;
-			case "excluded from lightmaps": 
+			case "excluded from lightmaps":
 				if (bool.TryParse(attribute.Value, out bool enabled))
 				{
 					if (enabled)
@@ -423,8 +580,9 @@ public class ThreedeeLoader
 		}
 	}
 
-	private static GameObject InstantiateProp(List<NodeAttribute> attributes)
+	private static GameObject InstantiateProp(ThreedeeNode node)
 	{
+		List<NodeAttribute> attributes = node.Attributes;
 		if (attributes != null)
 		{
 			var attr = attributes.Where(a => a.Name == "prefab").FirstOrDefault();
@@ -469,7 +627,7 @@ public class ThreedeeLoader
 			if (path == assetPath)
 			{
 				Debug.LogError("AssetDatabase.LoadAssetAtPath: " + path);
-				return AssetDatabase.LoadAssetAtPath<Material>(path); 
+				return AssetDatabase.LoadAssetAtPath<Material>(path);
 			}
 		}
 
