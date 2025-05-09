@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.SqlServer.Server;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -371,6 +372,8 @@ public class ThreedeeLoader
 					{
 						if (child.Attributes?.Count > 0)
 						{
+							Debug.Log($"Processing: {child.MeshName}");
+
 							var attrGeom = ProcessAtributeGeometry(child, instance.transform, prefab, out bool removeGeometry);
 							if (attrGeom != null && removeGeometry)
 							{
@@ -412,6 +415,7 @@ public class ThreedeeLoader
 					var lightsObject = new GameObject("QuadLights");
 					lightsObject.transform.parent = parent;
 					lightsObject.transform.localScale = new Vector3(1, 1, 1);
+					lightsObject.transform.rotation = new Quaternion();
 
 					AddQuadLights(mesh, intensity, lightsObject.transform);
 					removeGeometry = true;
@@ -431,6 +435,18 @@ public class ThreedeeLoader
 		return attr != null;
 	}
 
+	public static Vector3 CalculateNormal(Vector3 p1, Vector3 p2, Vector3 p3)
+	{
+		Vector3 edge1 = p2 - p1;
+		Vector3 edge2 = p3 - p1;
+		return Vector3.Normalize(Vector3.Cross(edge1, edge2));
+	}
+
+	private static Vector3 TransformVertex(Vector3 v, Transform parent)
+	{
+		return parent.TransformPoint(v);
+	}
+
 	private static void AddQuadLights(Mesh mesh, float intensity, Transform parent)
 	{
 		Vector3[] vertices = mesh.vertices;
@@ -445,6 +461,10 @@ public class ThreedeeLoader
 			int i0 = triangles[i];
 			int i1 = triangles[i + 1];
 			int i2 = triangles[i + 2];
+
+			var v1 = TransformVertex(vertices[i0], parent);
+			var v2 = TransformVertex(vertices[i1], parent);
+			var v3 = TransformVertex(vertices[i2], parent);
 
 			int[] tri1 = { i0, i1, i2 };
 
@@ -487,7 +507,9 @@ public class ThreedeeLoader
 								vertices[he3],
 							};
 
-							CreateAreaLight(quadVerts, parent);
+
+							var n = CalculateNormal(v1, v2, v3);
+							CreateAreaLight(quadVerts, parent, n);
 							found = true;
 							break;
 						}
@@ -500,26 +522,24 @@ public class ThreedeeLoader
 		}
 	}
 
-	private static void CreateAreaLight(Vector3[] quad, Transform parent)
+	private static void CreateAreaLight(Vector3[] quad, Transform parent, Vector3 normal)
 	{
 		Vector3 center = (quad[0] + quad[1] + quad[2] + quad[3]) / 4f;
-		Vector3 normal = Vector3.Cross(quad[1] - quad[0], quad[2] - quad[0]).normalized;
-		Vector3 up = normal;
-		Vector3 right = (quad[1] - quad[0]).normalized;
 		float width = Vector3.Distance(quad[0], quad[1]);
 		float height = Vector3.Distance(quad[1], quad[2]);
+		Vector3 right = (quad[1] - quad[0]).normalized;
 
 		GameObject lightObj = new GameObject("Quad Area Light");
 		lightObj.transform.SetParent(parent);
 		lightObj.transform.position = parent.TransformPoint(center);
 		lightObj.transform.localScale = new Vector3(1, 1, 1);
-		lightObj.transform.rotation = Quaternion.LookRotation(normal);
+		lightObj.transform.rotation = Quaternion.LookRotation(normal, right);
 
 #if UNITY_EDITOR
 		var light = lightObj.AddComponent<Light>();
 		light.type = LightType.Rectangle;
 		light.areaSize = new Vector2(height, width);
-		light.intensity = 10f;
+		light.intensity = 2f;
 		light.color = Color.white;
 		light.lightmapBakeType = LightmapBakeType.Baked;
 #endif
