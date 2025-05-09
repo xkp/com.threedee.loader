@@ -539,7 +539,7 @@ public class ThreedeeLoader
 		var light = lightObj.AddComponent<Light>();
 		light.type = LightType.Rectangle;
 		light.areaSize = new Vector2(height, width);
-		light.intensity = 2f;
+		light.intensity = 4f;
 		light.color = Color.white;
 		light.lightmapBakeType = LightmapBakeType.Baked;
 #endif
