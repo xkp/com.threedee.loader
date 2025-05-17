@@ -76,7 +76,7 @@ public class BigGameLoader
 				JObject jsonObject = JObject.Parse(json);
 
 				var moduleData = LoadModule(jsonObject);
-				var used = usedModules.Contains(moduleData.name);
+				var used = usedModules.Contains(moduleData.id);
 				if (used)
 				{
 					var module = LoadAndInitializeController(moduleData.controller);
