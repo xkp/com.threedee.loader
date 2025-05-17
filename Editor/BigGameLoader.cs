@@ -131,6 +131,13 @@ public class BigGameLoader
 		return instance as IBGModule;
 	}
 
+	private static BigGame LoadGame(string gameItemPath, string modulePath, out IEnumerable<IBGModule> modules)
+	{
+		string jsonContent = File.ReadAllText(gameItemPath);
+		JObject jsonObject = JObject.Parse(jsonContent);
+		return LoadGame(jsonObject, modulePath, out modules);
+	}
+
 	private static BigGame LoadGame(JObject root, string modulePath, out IEnumerable<IBGModule> modules)
 	{
 		var result = new BigGame();
