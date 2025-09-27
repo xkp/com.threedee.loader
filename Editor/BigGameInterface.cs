@@ -282,4 +282,113 @@ public class BaseBGModel : IBGModule
 	protected IBGGameModule _gameModule;
 }
 
+public class CharacterDescriptor
+{
+	public string Name { get; set; }
+	public string Gender { get; set; }
+	public object Data { get; set; }
+}
+
+public abstract class BaseCharacterModule : BaseBGModel
+{
+	protected abstract bool BuildCharacter(GameObject instance, CharacterDescriptor descriptor, GameItem item, BigGameItem template);
+	public override bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
+	{
+		if (item.Values.TryGetValue("descriptor", out object descriptor))
+		{
+			var character = (CharacterDescriptor)descriptor;
+			var instance = go = InstantiatePrefabFor(item, template);
+
+			if (go != null)
+			{
+				go.transform.position = item.Position;
+				go.transform.rotation = item.Rotation;
+				go.transform.localScale = item.Scale;
+
+				return BuildCharacter(instance, character, item, template);
+			}
+		}
+
+		go = null;
+		return false;
+	}
+
+	private GameObject InstantiatePrefabFor(GameItem character, BigGameItem template)
+	{
+		string gender, role;
+		template.GetPropertyValue("Role", out role);
+
+		if (template.GetPropertyValue("Gender", out gender))
+		{
+			var gmodule = _gameModule as IBGModule;
+			var templateName = template.unique
+				? $"{gmodule.Model.name}_Player_{gender}"
+				: $"{gmodule.Model.name}_{role}_{gender}";
+
+			return InstantiateTemplateByName(templateName);
+		}
+
+		return null;
+	}
+
+	public static GameObject InstantiateTemplateByName(
+			string prefabName,
+			Transform parent = null,
+			Vector3? worldPosition = null,
+			Quaternion? worldRotation = null,
+			bool selectAfterCreate = true)
+	{
+		if (string.IsNullOrWhiteSpace(prefabName))
+			throw new ArgumentException("prefabName is null or empty.", nameof(prefabName));
+
+		var path = FindPrefabPathByName(prefabName);
+		if (string.IsNullOrEmpty(path))
+			throw new InvalidOperationException($"No prefab found named '{prefabName}' under Assets/.");
+
+		var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+		if (!prefab)
+			throw new InvalidOperationException($"LoadAssetAtPath failed for '{path}'.");
+
+		GameObject instance = parent
+			? PrefabUtility.InstantiatePrefab(prefab, parent) as GameObject
+			: PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+
+		if (!instance)
+			throw new Exception("PrefabUtility.InstantiatePrefab returned null.");
+
+		Undo.RegisterCreatedObjectUndo(instance, $"Instantiate {prefab.name}");
+
+		instance.transform.position = worldPosition ?? Vector3.zero;
+		instance.transform.rotation = worldRotation ?? Quaternion.identity;
+		instance.name = prefab.name; // keep clean name (no (Clone))
+
+		if (selectAfterCreate)
+			Selection.activeObject = instance;  
+
+		return instance;
+	}
+
+	public static string FindPrefabPathByName(string prefabName)
+	{
+		var guids = AssetDatabase.FindAssets($"t:prefab {prefabName}");
+		if (guids == null || guids.Length == 0) return null;
+
+		string fallbackPath = null;
+
+		foreach (var guid in guids)
+		{
+			var path = AssetDatabase.GUIDToAssetPath(guid);
+			var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+			if (!go) continue;
+
+			if (go.name.Equals(prefabName, StringComparison.Ordinal))
+				return path; // exact match
+
+			fallbackPath ??= path;
+		}
+
+		return fallbackPath;
+	}
+}
+
 
