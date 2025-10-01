@@ -286,6 +286,7 @@ public class CharacterDescriptor
 {
 	public string Name { get; set; }
 	public string Gender { get; set; }
+	public string Role { get; set; }
 	public object Data { get; set; }
 }
 
@@ -297,7 +298,7 @@ public abstract class BaseCharacterModule : BaseBGModel
 		if (item.Values.TryGetValue("descriptor", out object descriptor))
 		{
 			var character = (CharacterDescriptor)descriptor;
-			var instance = go = InstantiatePrefabFor(item, template);
+			var instance = go = InstantiatePrefabFor(character, item, template);
 
 			if (go != null)
 			{
@@ -313,17 +314,16 @@ public abstract class BaseCharacterModule : BaseBGModel
 		return false;
 	}
 
-	private GameObject InstantiatePrefabFor(GameItem character, BigGameItem template)
+	private GameObject InstantiatePrefabFor(CharacterDescriptor descriptor, GameItem character, BigGameItem template)
 	{
 		string gender, role;
-		template.GetPropertyValue("Role", out role);
 
 		if (template.GetPropertyValue("Gender", out gender))
 		{
 			var gmodule = _gameModule as IBGModule;
 			var templateName = template.unique
 				? $"{gmodule.Model.name}_Player_{gender}"
-				: $"{gmodule.Model.name}_{role}_{gender}";
+				: $"{gmodule.Model.name}_{descriptor.Role}_{gender}";
 
 			return InstantiateTemplateByName(templateName);
 		}
