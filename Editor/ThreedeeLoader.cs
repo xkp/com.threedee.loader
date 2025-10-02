@@ -424,10 +424,12 @@ public class ThreedeeLoader
 
 				if (isSurface(child, out string surface))
 				{
+					Debug.Log($"Found surface: {surface}");
 					switch (surface.ToLower()) 
 					{
 						case "ad":
 							var quads = GetQuads(mesh, parent);
+							Debug.Log($"Found quads: {quads.Count}");
 							foreach (var quad in quads)
 							{
 								AddAdvertisementSurface(quad, parent);
