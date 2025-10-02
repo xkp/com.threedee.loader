@@ -424,12 +424,15 @@ public class ThreedeeLoader
 
 				if (isSurface(child, out string surface))
 				{
-					Debug.Log($"Found surface: {surface}");
-					switch (surface.ToLower()) 
+					switch (surface.ToLower())
 					{
 						case "ad":
+							//TODO: ensure there is only one of these
+							var anzuSDK = new GameObject("AnzuSDK");
+							var sdk = anzuSDK.AddComponent<AnzuSDK>();
+							sdk.AppKey = "9b4abd8b85e30933227d4044"; //TODO: find a better way
+
 							var quads = GetQuads(mesh, parent);
-							Debug.Log($"Found quads: {quads.Count}");
 							foreach (var quad in quads)
 							{
 								AddAdvertisementSurface(quad, parent);
@@ -454,7 +457,10 @@ public class ThreedeeLoader
 
 		var aspectRatio = width / height;
 		var anzu = adQuad.AddComponent<AnzuAd>();
+		anzu.ChannelName = "Channel_0";
 		anzu.AspectRatio = aspectRatio;
+
+		adQuad.AddComponent<AnzuStats>(); //TODO
 	}
 
 	private static bool isQuadLight(ThreedeeNode child, out float intensity)
@@ -467,7 +473,7 @@ public class ThreedeeLoader
 	private static bool isSurface(ThreedeeNode child, out string surface)
 	{
 		var attr = child.Attributes?.FirstOrDefault(a => a.Name == "surface");
-		if (attr != null) 
+		if (attr != null)
 		{
 			surface = attr.Value;
 			return true;
@@ -491,8 +497,8 @@ public class ThreedeeLoader
 		return parent.TransformPoint(v);
 	}
 
-	private static List<Vector3[]> GetQuads(Mesh mesh, Transform parent) 
-	{ 
+	private static List<Vector3[]> GetQuads(Mesh mesh, Transform parent)
+	{
 		var result = new List<Vector3[]>();
 
 		Vector3[] vertices = mesh.vertices;
@@ -547,10 +553,10 @@ public class ThreedeeLoader
 							int he3 = tri2[(t2 + 2) % 3];
 							var quadVerts = new Vector3[4]
 							{
-								vertices[e2],
-								vertices[e3],
-								vertices[e1],
-								vertices[he3],
+								TransformVertex(vertices[e2], parent),
+								TransformVertex(vertices[e3], parent),
+								TransformVertex(vertices[e1], parent),
+								TransformVertex(vertices[he3], parent),
 							};
 
 							result.Add(quadVerts);

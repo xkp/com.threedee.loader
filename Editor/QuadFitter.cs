@@ -12,7 +12,7 @@ public static class QuadFitter
 		Vector3[] points,
 		out float width,
 		out float height,
-		string name = "QuadFromPoints",
+		string name = "ad",
 		Material material = null)
 	{
 		width = height = 0f;
