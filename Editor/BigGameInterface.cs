@@ -153,8 +153,7 @@ public interface IBGModule
 
 public interface IBGGameModule
 {
-	//access to character prefabs
-	GameObject GetCharacter(string module, int gender, GameItem item, BigGame game);
+	string GetAlias();
 	void AddScene(string name, bool starter = false);
 }
 
@@ -290,9 +289,58 @@ public class CharacterDescriptor
 	public object Data { get; set; }
 }
 
+public class BaseGameModule : BaseBGModel, IBGGameModule
+{
+	private List<string> _scenes = new List<string>() { "MainScene" };
+	public void AddScene(string name, bool starter)
+	{
+		if (starter)
+		{
+			_scenes.Insert(0, name);
+		}
+		else
+		{
+			_scenes.Add(name);
+		}
+	}
+
+	public virtual string GetAlias()
+	{
+		return Model.name;
+	}
+
+	private void AddScenes()
+	{
+		var currentScenes = new List<EditorBuildSettingsScene>();
+		foreach (var scene in _scenes)
+		{
+			var guid = AssetDatabase.FindAssets($"t:Scene {scene}").FirstOrDefault();
+			if (!string.IsNullOrEmpty(guid))
+			{
+				string scenePath = AssetDatabase.GUIDToAssetPath(guid);
+				// Check if the scene is already in the list
+				bool alreadyAdded = currentScenes.Any(s => s.path == scenePath);
+				if (!alreadyAdded)
+				{
+					EditorBuildSettingsScene newScene = new EditorBuildSettingsScene(scenePath, true);
+					currentScenes.Add(newScene);
+					Debug.Log("Added scene: " + scenePath);
+				}
+				else
+				{
+					Debug.Log("Scene already in Build Settings: " + scenePath);
+				}
+			}
+		}
+
+		EditorBuildSettings.scenes = currentScenes.ToArray();
+	}
+}
+
 public abstract class BaseCharacterModule : BaseBGModel
 {
 	protected abstract bool BuildCharacter(GameObject instance, CharacterDescriptor descriptor, GameItem item, BigGameItem template);
+	
 	public override bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
 	{
 		if (item.Values.TryGetValue("descriptor", out object descriptor))
@@ -363,7 +411,7 @@ public abstract class BaseCharacterModule : BaseBGModel
 		instance.name = prefab.name; // keep clean name (no (Clone))
 
 		if (selectAfterCreate)
-			Selection.activeObject = instance;  
+			Selection.activeObject = instance;
 
 		return instance;
 	}
