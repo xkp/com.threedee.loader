@@ -368,10 +368,10 @@ public abstract class BaseCharacterModule : BaseBGModel
 
 		if (template.GetPropertyValue("Gender", out gender))
 		{
-			var gmodule = _gameModule as IBGModule;
+			var gmodule = _gameModule;
 			var templateName = template.unique
-				? $"{gmodule.Model.name}_Player_{gender}"
-				: $"{gmodule.Model.name}_{descriptor.Role}_{gender}";
+				? $"{gmodule.GetAlias()}_Player_{gender}"
+				: $"{gmodule.GetAlias()}_{descriptor.Role}_{gender}";
 
 			return InstantiateTemplateByName(templateName);
 		}
