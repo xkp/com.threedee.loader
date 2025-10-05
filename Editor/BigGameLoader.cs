@@ -248,6 +248,9 @@ public class BigGameLoader
 					case JTokenType.Boolean:
 						result[key] = (bool)value;
 						break;
+					case JTokenType.Object:
+						result[key] = property.Value;
+						break;
 					default:
 						Debug.Log($"INVALID VALUE TYPE {value.Type}");
 						break;

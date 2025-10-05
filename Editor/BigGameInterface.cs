@@ -309,6 +309,12 @@ public class BaseGameModule : BaseBGModel, IBGGameModule
 		return Model.name;
 	}
 
+	public override void Cleanup()
+	{
+		base.Cleanup();
+		AddScenes();
+	}
+
 	private void AddScenes()
 	{
 		var currentScenes = new List<EditorBuildSettingsScene>();
@@ -340,12 +346,17 @@ public class BaseGameModule : BaseBGModel, IBGGameModule
 public abstract class BaseCharacterModule : BaseBGModel
 {
 	protected abstract bool BuildCharacter(GameObject instance, CharacterDescriptor descriptor, GameItem item, BigGameItem template);
-	
+
+	protected virtual CharacterDescriptor GetDescriptor(JObject data)
+	{
+		return data?.ToObject<CharacterDescriptor>();
+	}
+
 	public override bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
 	{
 		if (item.Values.TryGetValue("descriptor", out object descriptor))
 		{
-			var character = (CharacterDescriptor)descriptor;
+			var character = GetDescriptor(descriptor as JObject);
 			var instance = go = InstantiatePrefabFor(character, item, template);
 
 			if (go != null)
@@ -364,19 +375,11 @@ public abstract class BaseCharacterModule : BaseBGModel
 
 	private GameObject InstantiatePrefabFor(CharacterDescriptor descriptor, GameItem character, BigGameItem template)
 	{
-		string gender, role;
+		var templateName = template.unique
+			? $"{_gameModule.GetAlias()}_Avatar_{descriptor.Gender}"
+			: $"{_gameModule.GetAlias()}_{descriptor.Role}_{descriptor.Gender}";
 
-		if (template.GetPropertyValue("Gender", out gender))
-		{
-			var gmodule = _gameModule;
-			var templateName = template.unique
-				? $"{gmodule.GetAlias()}_Player_{gender}"
-				: $"{gmodule.GetAlias()}_{descriptor.Role}_{gender}";
-
-			return InstantiateTemplateByName(templateName);
-		}
-
-		return null;
+		return InstantiateTemplateByName(templateName);
 	}
 
 	public static GameObject InstantiateTemplateByName(
