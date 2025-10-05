@@ -238,6 +238,7 @@ public class ThreedeeLoader
 		string[] fbxFiles = Directory.GetFiles(inputFolder, "*.fbx");
 
 		string meshFolder = Path.Combine(outputFolder, "Assets", "Big Game", "Meshes");
+		Directory.CreateDirectory(meshFolder);
 		foreach (string fbxPath in fbxFiles)
 		{
 			var filename = Path.Combine(meshFolder, Path.GetFileName(fbxPath));
