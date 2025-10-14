@@ -153,6 +153,7 @@ public interface IBGModule
 
 public interface IBGGameModule
 {
+	T GetBuildValue<T>(string key);
 	string GetAlias();
 	void AddScene(string name, bool starter = false);
 }
@@ -291,6 +292,22 @@ public class CharacterDescriptor
 
 public class BaseGameModule : BaseBGModel, IBGGameModule
 {
+	public T GetBuildValue<T>(string key)
+	{
+		var buildItem = _game.GameItems.FirstOrDefault(gi => string.IsNullOrWhiteSpace(gi.ModuleId) && gi.Id == "Build");
+		if (buildItem != null && buildItem.Values.TryGetValue(key, out object value))
+		{
+			if (value is JObject)
+			{
+				return (value as JObject).ToObject<T>();
+			}
+
+			return (T)value;
+		}
+
+		return default(T);
+	}
+
 	private List<string> _scenes = new List<string>() { "MainScene" };
 	public void AddScene(string name, bool starter)
 	{
