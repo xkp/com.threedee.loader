@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 
 public class BigGame
@@ -393,8 +394,12 @@ public abstract class BaseCharacterModule : BaseBGModel
 			}
 		}
 
-		go = null;
-		return false;
+		go = new GameObject(item.Id);
+		go.transform.position = item.Position;
+		go.transform.rotation = item.Rotation;
+		go.transform.localScale = item.Scale;
+
+		return BuildCharacter(go, null, item, template);
 	}
 
 	private GameObject InstantiatePrefabFor(CharacterDescriptor descriptor, GameItem character, BigGameItem template)
@@ -463,6 +468,24 @@ public abstract class BaseCharacterModule : BaseBGModel
 		}
 
 		return fallbackPath;
+	}
+
+	public static GameObject FindPrefabByName(string prefabName)
+	{
+		var guids = AssetDatabase.FindAssets($"t:prefab {prefabName}");
+		if (guids == null || guids.Length == 0) return null;
+
+		foreach (var guid in guids)
+		{
+			var path = AssetDatabase.GUIDToAssetPath(guid);
+			var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+			if (!go) continue;
+
+			if (go.name.Equals(prefabName, StringComparison.Ordinal))
+				return go; // exact match
+		}
+
+		return null;
 	}
 }
 
