@@ -60,8 +60,8 @@ public class BGBuildScript
 		string buildPath = Path.Combine(outputFolder, "Build");
 		BuildPipeline.BuildPlayer(new BuildPlayerOptions
 		{
-			//scenes = EditorBuildSettings.scenes.Select(s => s.path).ToArray(),
-			scenes = new[] { scene.path }, //todo: added scenes
+			scenes = EditorBuildSettings.scenes.Select(s => s.path).ToArray(),
+			//scenes = new[] { scene.path }, //todo: added scenes
 			locationPathName = buildPath,
 			target = BuildTarget.WebGL, // Adjust target as necessary
 			options = BuildOptions.None
