@@ -290,6 +290,13 @@ public class CharacterDescriptor
 	public object Data { get; set; }
 }
 
+public class AvatarOptions
+{
+	public bool IsCustomAvatar { get; set; }
+	public string ModuleId { get; set; }
+	public object Data { get; set; }
+}
+
 public class BaseGameModule : BaseBGModel, IBGGameModule
 {
 	public T GetBuildValue<T>(string key)
