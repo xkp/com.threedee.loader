@@ -39,6 +39,7 @@ public class BGBuildScript
 
 		Console.WriteLine("Loading environment assets...");
 		ThreedeeLoader.Load(inputFolder, outputFolder);
+		
 		await BigGameLoader.Load(gameItemPath, modulePath);
 
 		//save before generating light maps
@@ -86,7 +87,7 @@ public class BGBuildScript
 		}
 	}
 
-	public static void UpdateGame()
+	public static async void UpdateGame()
 	{
 		string inputFolder;
 		string outputFolder;
@@ -103,7 +104,7 @@ public class BGBuildScript
 		}
 
 		Console.WriteLine("Loading environment assets...");
-		BigGameLoader.Update(gameItemPath, modulePath);
+		await BigGameLoader.Update(gameItemPath, modulePath);
 
 		UpdateNavMeshes();
 

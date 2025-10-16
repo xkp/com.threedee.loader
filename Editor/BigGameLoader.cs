@@ -44,13 +44,13 @@ public class BigGameLoader
 		{
 			foreach (var item in game.GameItems)
 			{
-				CreateGameObject(item, modules);
+				await CreateGameObject(item, modules);
 			}
 		}
 
 		foreach (var module in modules)
 		{
-			module.Cleanup();
+			await module.Cleanup();
 		}
 	}
 
@@ -421,7 +421,7 @@ public class BigGameLoader
 		return guidToObjectMap;
 	}
 
-	public static void Update(string gameItemPath, string modulePath)
+	public static async Task Update(string gameItemPath, string modulePath)
 	{
 		string jsonContent = File.ReadAllText(gameItemPath);
 		JObject jsonObject = JObject.Parse(jsonContent);
@@ -435,7 +435,7 @@ public class BigGameLoader
 
 		foreach (var module in modules)
 		{
-			module.Init(modules, game);
+			await module.Init(modules, game);
 		}
 
 		var index = GetGameObjectsIndex();
@@ -484,7 +484,7 @@ public class BigGameLoader
 						var module = GetModuleByTemplateId(modules, templateId);
 						if (module != null)
 						{
-							module.RemoveItem(go);
+							await module.RemoveItem(go);
 						}
 					}
 
@@ -497,7 +497,7 @@ public class BigGameLoader
 				var module = GetModuleById(modules, gi.ModuleId);
 				if (module != null)
 				{
-					CreateGameObject(gi, modules);
+					await CreateGameObject(gi, modules);
 				}
 			}
 
@@ -506,7 +506,7 @@ public class BigGameLoader
 				var module = GetModuleById(modules, goi.Item1.ModuleId);
 				if (module != null)
 				{
-					module.UpdateItem(goi.Item1, goi.Item2);
+					await module.UpdateItem(goi.Item1, goi.Item2);
 					UpdateGameObject(goi.Item1, goi.Item2);
 				}
 			}
@@ -558,7 +558,7 @@ public class BigGameLoader
 		}
 	}
 
-	private static async void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
+	private static async Task CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
 	{
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
