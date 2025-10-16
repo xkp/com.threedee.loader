@@ -142,14 +142,14 @@ public interface IBGModule
 	BigGameModule Model { get; set; }
 	BigGameItem GetTemplateItem(string id);
 
-	void Init(IEnumerable<IBGModule> modules, BigGame game);
-	void ConfigProject();
-	void Build();
-	void Cleanup();
+	Task Init(IEnumerable<IBGModule> modules, BigGame game);
+	Task ConfigProject();
+	Task Build();
+	Task Cleanup();
 
-	bool CreateItem(GameItem item, BigGameItem template, out GameObject go);
-	bool UpdateItem(GameItem item, GameObject go);
-	void RemoveItem(GameObject go);
+	Task<GameObject> CreateItem(GameItem item, BigGameItem template);
+	Task<bool> UpdateItem(GameItem item, GameObject go);
+	Task RemoveItem(GameObject go);
 }
 
 public interface IBGGameModule
@@ -168,7 +168,7 @@ public class BaseBGModel : IBGModule
 {
 	public BigGameModule Model { get; set; }
 
-	public virtual void Init(IEnumerable<IBGModule> modules, BigGame game)
+	public virtual Task Init(IEnumerable<IBGModule> modules, BigGame game)
 	{
 		_game = game;
 		_modules = modules;
@@ -179,24 +179,28 @@ public class BaseBGModel : IBGModule
 				return true;
 			return false;
 		}) as IBGGameModule;
+
+		return Task.CompletedTask;
 	}
 
-	public virtual void ConfigProject()
+	public virtual Task ConfigProject()
 	{
+		return Task.CompletedTask;
 	}
 
-	public virtual bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
+	public virtual Task<GameObject> CreateItem(GameItem item, BigGameItem template)
 	{
-		go = null;
-		return false;
+		return Task.FromResult(null as GameObject);
 	}
 
-	public virtual void Build()
+	public virtual Task Build()
 	{
+		return Task.CompletedTask;
 	}
 
-	public virtual void Cleanup()
+	public virtual Task Cleanup()
 	{
+		return Task.CompletedTask;
 	}
 
 	public BigGameItem GetTemplateItem(string id)
@@ -223,18 +227,19 @@ public class BaseBGModel : IBGModule
 		return null;
 	}
 
-	public virtual bool ImportItem(GameItem item, BigGameItem template)
+	public virtual Task<bool> ImportItem(GameItem item, BigGameItem template)
 	{
-		return false;
+		return Task.FromResult(false);
 	}
 
-	public virtual bool UpdateItem(GameItem item, GameObject go)
+	public virtual Task<bool> UpdateItem(GameItem item, GameObject go)
 	{
-		return false;
+		return Task.FromResult(false);
 	}
 
-	public virtual void RemoveItem(GameObject go)
+	public virtual Task RemoveItem(GameObject go)
 	{
+		return Task.CompletedTask;
 	}
 
 	public GameObject GetPrefab(string prefabName)
@@ -334,10 +339,10 @@ public class BaseGameModule : BaseBGModel, IBGGameModule
 		return Model.name;
 	}
 
-	public override void Cleanup()
+	public override Task Cleanup()
 	{
-		base.Cleanup();
 		AddScenes();
+		return base.Cleanup();
 	}
 
 	private void AddScenes()
@@ -370,36 +375,42 @@ public class BaseGameModule : BaseBGModel, IBGGameModule
 
 public abstract class BaseCharacterModule : BaseBGModel
 {
-	protected abstract bool BuildCharacter(GameObject instance, CharacterDescriptor descriptor, GameItem item, BigGameItem template);
+	protected abstract Task<bool> BuildCharacter(GameObject instance, CharacterDescriptor descriptor, GameItem item, BigGameItem template);
 
 	protected virtual CharacterDescriptor GetDescriptor(JObject data)
 	{
 		return data?.ToObject<CharacterDescriptor>();
 	}
 
-	public override bool CreateItem(GameItem item, BigGameItem template, out GameObject go)
+	public override async Task<GameObject> CreateItem(GameItem item, BigGameItem template)
 	{
 		if (item.Values.TryGetValue("descriptor", out object descriptor))
 		{
 			var character = GetDescriptor(descriptor as JObject);
-			var instance = go = InstantiatePrefabFor(character, item, template);
+			var instance = InstantiatePrefabFor(character, item, template);
 
-			if (go != null)
+			if (instance != null)
 			{
-				go.transform.position = item.Position;
-				go.transform.rotation = item.Rotation;
-				go.transform.localScale = item.Scale;
+				instance.transform.position = item.Position;
+				instance.transform.rotation = item.Rotation;
+				instance.transform.localScale = item.Scale;
 
-				return BuildCharacter(instance, character, item, template);
+				if (!await BuildCharacter(instance, character, item, template))
+					return null;
+
+				return instance;
 			}
 		}
 
-		go = new GameObject(item.Id);
+		var go = new GameObject(item.Id);
 		go.transform.position = item.Position;
 		go.transform.rotation = item.Rotation;
 		go.transform.localScale = item.Scale;
 
-		return BuildCharacter(go, null, item, template);
+		if (!await BuildCharacter(go, null, item, template))
+			return null;
+
+		return go;
 	}
 
 	private GameObject InstantiatePrefabFor(CharacterDescriptor descriptor, GameItem character, BigGameItem template)

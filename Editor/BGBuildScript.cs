@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using UnityEngine.SceneManagement;
 using Unity.AI.Navigation;
+using System.Threading.Tasks;
 
 public class BGBuildScript
 {
@@ -15,7 +16,7 @@ public class BGBuildScript
 		Console.WriteLine("Creating directory structure, no more is needed");
 	}
 
-	public static void CreateGame()
+	public static async Task CreateGame()
 	{
 		Console.WriteLine("Creating folder structure...");
 		string inputFolder;
@@ -38,7 +39,7 @@ public class BGBuildScript
 
 		Console.WriteLine("Loading environment assets...");
 		ThreedeeLoader.Load(inputFolder, outputFolder);
-		BigGameLoader.Load(gameItemPath, modulePath);
+		await BigGameLoader.Load(gameItemPath, modulePath);
 
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
@@ -105,7 +106,7 @@ public class BGBuildScript
 		BigGameLoader.Update(gameItemPath, modulePath);
 
 		UpdateNavMeshes();
-		
+
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
 

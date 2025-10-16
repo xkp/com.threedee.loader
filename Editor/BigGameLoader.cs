@@ -16,7 +16,7 @@ using UnityEngine;
 
 public class BigGameLoader
 {
-	public static void Load(string gameItemPath, string modulePath)
+	public static async Task Load(string gameItemPath, string modulePath)
 	{
 		Debug.Log(gameItemPath);
 		string jsonContent = File.ReadAllText(gameItemPath);
@@ -32,12 +32,12 @@ public class BigGameLoader
 		//run the modules
 		foreach (var module in modules)
 		{
-			module.Init(modules, game);
+			await module.Init(modules, game);
 		}
 
 		foreach (var module in modules)
 		{
-			module.ConfigProject();
+			await module.ConfigProject();
 		}
 
 		if (game.GameItems != null)
@@ -558,7 +558,7 @@ public class BigGameLoader
 		}
 	}
 
-	private static void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
+	private static async void CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
 	{
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
@@ -567,8 +567,8 @@ public class BigGameLoader
 			if (template != null)
 			{
 				//give the module a chance for custom importing
-				GameObject go = null;
-				if (!module.CreateItem(item, template, out go))
+				GameObject go = await module.CreateItem(item, template);
+				if (go == null)
 				{
 					//revert to prefab
 					var prefabName = Path.GetFileNameWithoutExtension(template.prefab);
