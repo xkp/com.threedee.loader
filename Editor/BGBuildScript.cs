@@ -16,7 +16,7 @@ public class BGBuildScript
 		Console.WriteLine("Creating directory structure, no more is needed");
 	}
 
-	public static async Task CreateGame()
+	public static async void CreateGame()
 	{
 		Console.WriteLine("Creating folder structure...");
 		string inputFolder;
