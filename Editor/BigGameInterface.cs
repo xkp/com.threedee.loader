@@ -284,7 +284,7 @@ public class BaseBGModel : IBGModule
 		}
 	}
 
-	public Task Preprocess(IList<PostProcessNode> preprocess)
+	public virtual Task Preprocess(IList<PostProcessNode> preprocess)
 	{
 		return Task.CompletedTask;
 	}
