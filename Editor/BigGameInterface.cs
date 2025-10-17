@@ -150,6 +150,7 @@ public interface IBGModule
 	Task<GameObject> CreateItem(GameItem item, BigGameItem template);
 	Task<bool> UpdateItem(GameItem item, GameObject go);
 	Task RemoveItem(GameObject go);
+	Task Preprocess(IList<PostProcessNode> preprocess);
 }
 
 public interface IBGGameModule
@@ -281,6 +282,11 @@ public class BaseBGModel : IBGModule
 
 			GameObject.DestroyImmediate(go);
 		}
+	}
+
+	public Task Preprocess(IList<PostProcessNode> preprocess)
+	{
+		return Task.CompletedTask;
 	}
 
 	protected BigGame _game;

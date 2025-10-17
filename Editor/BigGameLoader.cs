@@ -16,7 +16,7 @@ using UnityEngine;
 
 public class BigGameLoader
 {
-	public static async Task Load(string gameItemPath, string modulePath)
+	public static async Task Load(string gameItemPath, string modulePath, List<PostProcessNode> preprocess)
 	{
 		Debug.Log(gameItemPath);
 		string jsonContent = File.ReadAllText(gameItemPath);
@@ -38,6 +38,14 @@ public class BigGameLoader
 		foreach (var module in modules)
 		{
 			await module.ConfigProject();
+		}
+
+		foreach (var module in modules)
+		{
+			if (!preprocess.Any())
+				break;
+
+			await module.Preprocess(preprocess);
 		}
 
 		if (game.GameItems != null)

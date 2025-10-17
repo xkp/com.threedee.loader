@@ -1,6 +1,6 @@
 {
     "name": "com.threedee.loader",
-    "version": "0.6.55",
+    "version": "0.6.56",
     "displayName": "Big Game Loader",
     "description": "An asset importer from the BigGame platform",
     "unity": "2020.3",
