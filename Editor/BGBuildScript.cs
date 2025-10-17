@@ -38,9 +38,10 @@ public class BGBuildScript
 		}
 
 		Console.WriteLine("Loading environment assets...");
-		ThreedeeLoader.Load(inputFolder, outputFolder);
-		
-		await BigGameLoader.Load(gameItemPath, modulePath);
+		var postProcess = new List<PostProcessNode>();
+		ThreedeeLoader.Load(inputFolder, outputFolder, postProcess);
+
+		await BigGameLoader.Load(gameItemPath, modulePath, postProcess);
 
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);

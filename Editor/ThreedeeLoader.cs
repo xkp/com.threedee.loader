@@ -1,5 +1,4 @@
-﻿using Anzu;
-using Microsoft.SqlServer.Server;
+﻿using Microsoft.SqlServer.Server;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,9 +30,15 @@ public class NodeAttribute
 	public string Value { get; set; }
 }
 
+public struct PostProcessNode
+{
+	public GameObject GameObject { get; set; }
+	public IList<NodeAttribute> Attributes { get; set; }
+}
+
 public class ThreedeeLoader
 {
-	public static void Load(string inputFolder, string outputFolder)
+	public static void Load(string inputFolder, string outputFolder, IList<PostProcessNode> postProcess)
 	{
 		Console.WriteLine("Loading environment assets...");
 		Dictionary<string, GameObject> envAssets = LoadEnvironmentAssets(inputFolder, outputFolder);
@@ -48,7 +53,7 @@ public class ThreedeeLoader
 		ThreedeeNode envItems = LoadGameItems(inputFolder);
 
 		// Create the threedee scene
-		CreateSceneNode(envItems, envAssets, null);
+		CreateSceneNode(envItems, envAssets, null, postProcess);
 	}
 
 	public static ThreedeeNode LoadScene(string jsonContent)
@@ -304,7 +309,7 @@ public class ThreedeeLoader
 		}
 	}
 
-	private static void CreateSceneNode(ThreedeeNode node, Dictionary<string, GameObject> fbxLibrary, Transform parentTransform)
+	private static void CreateSceneNode(ThreedeeNode node, Dictionary<string, GameObject> fbxLibrary, Transform parentTransform, IList<PostProcessNode> postProcess)
 	{
 		Console.WriteLine($"CreateNode: {node?.MeshName}, meshes: {fbxLibrary.Count}");
 
@@ -370,21 +375,18 @@ public class ThreedeeLoader
 				var children = new List<ThreedeeNode>();
 				foreach (var child in node.Children)
 				{
-					if (!string.IsNullOrEmpty(child.MeshName) && !child.MeshName.ToLower().EndsWith(".fbx"))
+					if (child.Attributes?.Count > 0)
 					{
-						if (child.Attributes?.Count > 0)
-						{
-							Debug.Log($"Processing: {child.MeshName}");
+						Debug.Log($"Processing: {child.MeshName}");
 
-							var attrGeom = ProcessAtributeGeometry(child, instance.transform, prefab, out bool removeGeometry);
+						fbxLibrary.TryGetValue(GetMeshPath(child.MeshName), out GameObject attrPrefab);
+						if (attrPrefab != null)
+						{
+							var attrGeom = ProcessAtributeGeometry(child, instance.transform, attrPrefab, postProcess, out bool removeGeometry);
 							if (attrGeom != null && removeGeometry)
 							{
 								GameObject.DestroyImmediate(attrGeom, true);
 							}
-						}
-						else
-						{
-							//This is the actual geometry already inserted
 						}
 					}
 					else
@@ -395,18 +397,18 @@ public class ThreedeeLoader
 
 				foreach (var child in children)
 				{
-					CreateSceneNode(child, fbxLibrary, instance.transform);
+					CreateSceneNode(child, fbxLibrary, instance.transform, postProcess);
 				}
 			}
 		}
 	}
 
-	private static GameObject ProcessAtributeGeometry(ThreedeeNode child, Transform parent, GameObject prefab, out bool removeGeometry)
+	private static GameObject ProcessAtributeGeometry(ThreedeeNode child, Transform parent, GameObject prefab, IList<PostProcessNode> postprocess, out bool removeGeometry)
 	{
 		removeGeometry = false;
 
 		//find the submesh 
-		var t = prefab.transform.Find(child.MeshName);
+		var t = prefab.transform.Find(Path.GetFileNameWithoutExtension(child.MeshName));
 		if (t != null)
 		{
 			var mesh = t.GetComponent<MeshFilter>()?.sharedMesh;
@@ -423,25 +425,27 @@ public class ThreedeeLoader
 					removeGeometry = true;
 				}
 
-				if (isSurface(child, out string surface))
+				if (isSurface(child))
 				{
-					switch (surface.ToLower())
-					{
-						case "ad":
-							//TODO: ensure there is only one of these
-							var anzuSDK = new GameObject("AnzuSDK");
-							var sdk = anzuSDK.AddComponent<AnzuSDK>();
-							sdk.AppKey = "9b4abd8b85e30933227d4044"; //TODO: find a better way
+					removeGeometry = false;
+					postprocess.Add(new PostProcessNode { GameObject = prefab, Attributes = child.Attributes });
 
-							var quads = GetQuads(mesh, parent);
-							foreach (var quad in quads)
-							{
-								AddAdvertisementSurface(quad, parent);
-							}
-							break;
-					}
+					/*					switch (surface.ToLower())
+										{
+											case "ad":
+												//TODO: ensure there is only one of these
+												var anzuSDK = new GameObject("AnzuSDK");
+												var sdk = anzuSDK.AddComponent<AnzuSDK>();
+												sdk.AppKey = "9b4abd8b85e30933227d4044"; //TODO: find a better way
 
-					removeGeometry = true;
+												var quads = GetQuads(mesh, parent);
+												foreach (var quad in quads)
+												{
+													AddAdvertisementSurface(quad, parent);
+												}
+												break;
+										}
+					*/
 				}
 			}
 
@@ -456,12 +460,13 @@ public class ThreedeeLoader
 		var adQuad = QuadFitter.CreateQuadFromPoints(quad, out float width, out float height);
 		adQuad.transform.parent = parent;
 
-		var aspectRatio = width / height;
-		var anzu = adQuad.AddComponent<AnzuAd>();
-		anzu.ChannelName = "Channel_0";
-		anzu.AspectRatio = aspectRatio;
+		/*		var aspectRatio = width / height;
+				var anzu = adQuad.AddComponent<AnzuAd>();
+				anzu.ChannelName = "Channel_0";
+				anzu.AspectRatio = aspectRatio;
 
-		adQuad.AddComponent<AnzuStats>(); //TODO
+				adQuad.AddComponent<AnzuStats>(); //TODO
+		*/
 	}
 
 	private static bool isQuadLight(ThreedeeNode child, out float intensity)
@@ -471,16 +476,14 @@ public class ThreedeeLoader
 		return attr != null;
 	}
 
-	private static bool isSurface(ThreedeeNode child, out string surface)
+	private static bool isSurface(ThreedeeNode child)
 	{
 		var attr = child.Attributes?.FirstOrDefault(a => a.Name == "surface");
 		if (attr != null)
 		{
-			surface = attr.Value;
 			return true;
 		}
 
-		surface = string.Empty;
 		return false;
 	}
 
