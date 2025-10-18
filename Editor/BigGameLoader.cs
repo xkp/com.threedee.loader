@@ -153,13 +153,17 @@ public class BigGameLoader
 		result.Name = root["name"]?.ToString();
 
 		var usedModules = new List<string>();
-		usedModules.Add(CoreModuleId);
 
 		var modulesNode = root["modules"] as JArray;
 		foreach (var moduleNode in modulesNode)
 		{
 			var moduleName = moduleNode.ToString();
 			usedModules.Add(moduleName);
+		}
+
+		if (!usedModules.Contains(CoreModuleId))
+		{
+			usedModules.Add(CoreModuleId);
 		}
 
 		modules = BuildModules(result, modulePath, usedModules);
