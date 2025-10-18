@@ -146,14 +146,16 @@ public class BigGameLoader
 		return LoadGame(jsonObject, modulePath, out modules);
 	}
 
+	private static string CoreModuleId = "53D8F89C-4EDC-4DEF-B464-015BD1187E95";
 	private static BigGame LoadGame(JObject root, string modulePath, out IEnumerable<IBGModule> modules)
 	{
 		var result = new BigGame();
 		result.Name = root["name"]?.ToString();
 
 		var usedModules = new List<string>();
-		var modulesNode = root["modules"] as JArray;
+		usedModules.Add(CoreModuleId);
 
+		var modulesNode = root["modules"] as JArray;
 		foreach (var moduleNode in modulesNode)
 		{
 			var moduleName = moduleNode.ToString();
