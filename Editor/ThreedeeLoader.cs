@@ -382,7 +382,10 @@ public class ThreedeeLoader
 						fbxLibrary.TryGetValue(GetMeshPath(child.MeshName), out GameObject attrPrefab);
 						if (attrPrefab != null)
 						{
-							var attrGeom = ProcessAtributeGeometry(child, instance.transform, attrPrefab, postProcess, out bool removeGeometry);
+							//reparent attribute geometry
+							var attrInstance = PrefabUtility.InstantiatePrefab(attrPrefab, instance.transform) as GameObject;
+
+							var attrGeom = ProcessAtributeGeometry(child, instance.transform, attrInstance, postProcess, out bool removeGeometry);
 							if (attrGeom != null && removeGeometry)
 							{
 								GameObject.DestroyImmediate(attrGeom, true);
