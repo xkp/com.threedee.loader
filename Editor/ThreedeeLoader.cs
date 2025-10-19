@@ -428,24 +428,7 @@ public class ThreedeeLoader
 				if (isSurface(child))
 				{
 					removeGeometry = false;
-					postprocess.Add(new PostProcessNode { GameObject = prefab, Attributes = child.Attributes });
-
-					/*					switch (surface.ToLower())
-										{
-											case "ad":
-												//TODO: ensure there is only one of these
-												var anzuSDK = new GameObject("AnzuSDK");
-												var sdk = anzuSDK.AddComponent<AnzuSDK>();
-												sdk.AppKey = "9b4abd8b85e30933227d4044"; //TODO: find a better way
-
-												var quads = GetQuads(mesh, parent);
-												foreach (var quad in quads)
-												{
-													AddAdvertisementSurface(quad, parent);
-												}
-												break;
-										}
-					*/
+					postprocess.Add(new PostProcessNode { GameObject = t.gameObject, Attributes = child.Attributes });
 				}
 			}
 
@@ -453,20 +436,6 @@ public class ThreedeeLoader
 		}
 
 		return null;
-	}
-
-	private static void AddAdvertisementSurface(Vector3[] quad, Transform parent)
-	{
-		var adQuad = QuadFitter.CreateQuadFromPoints(quad, out float width, out float height);
-		adQuad.transform.parent = parent;
-
-		/*		var aspectRatio = width / height;
-				var anzu = adQuad.AddComponent<AnzuAd>();
-				anzu.ChannelName = "Channel_0";
-				anzu.AspectRatio = aspectRatio;
-
-				adQuad.AddComponent<AnzuStats>(); //TODO
-		*/
 	}
 
 	private static bool isQuadLight(ThreedeeNode child, out float intensity)
@@ -499,82 +468,6 @@ public class ThreedeeLoader
 		if (parent == null)
 			return v;
 		return parent.TransformPoint(v);
-	}
-
-	private static List<Vector3[]> GetQuads(Mesh mesh, Transform parent)
-	{
-		var result = new List<Vector3[]>();
-
-		Vector3[] vertices = mesh.vertices;
-		int[] triangles = mesh.triangles;
-
-		var used = new HashSet<int>();
-
-		for (int i = 0; i < triangles.Length; i += 3)
-		{
-			if (used.Contains(i)) continue;
-
-			int i0 = triangles[i];
-			int i1 = triangles[i + 1];
-			int i2 = triangles[i + 2];
-
-			var v1 = TransformVertex(vertices[i0], parent);
-			var v2 = TransformVertex(vertices[i1], parent);
-			var v3 = TransformVertex(vertices[i2], parent);
-
-			int[] tri1 = { i0, i1, i2 };
-
-			// Try to find a matching triangle
-			for (int j = i + 3; j < triangles.Length; j += 3)
-			{
-				if (used.Contains(j)) continue;
-
-				int j0 = triangles[j];
-				int j1 = triangles[j + 1];
-				int j2 = triangles[j + 2];
-
-				int[] tri2 = { j0, j1, j2 };
-
-				// find a shared edge
-				for (int t1 = 0; t1 < 3; t1++)
-				{
-					int e1 = tri1[t1];
-					int e2 = tri1[(t1 + 1) % 3];
-
-					bool found = false;
-					for (int t2 = 0; t2 < 3; t2++)
-					{
-						int he1 = tri2[t2];
-						int he2 = tri2[(t2 + 1) % 3];
-
-						if (he1 == e2 && he2 == e1)
-						{
-							//found 
-							used.Add(i);
-							used.Add(j);
-
-							int e3 = tri1[(t1 + 2) % 3];
-							int he3 = tri2[(t2 + 2) % 3];
-							var quadVerts = new Vector3[4]
-							{
-								TransformVertex(vertices[e2], parent),
-								TransformVertex(vertices[e3], parent),
-								TransformVertex(vertices[e1], parent),
-								TransformVertex(vertices[he3], parent),
-							};
-
-							result.Add(quadVerts);
-							found = true;
-							break;
-						}
-					}
-
-					if (found)
-						break;
-				}
-			}
-		}
-		return result;
 	}
 
 	private static void AddQuadLights(Mesh mesh, float intensity, Transform parent)
