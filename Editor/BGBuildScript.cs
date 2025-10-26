@@ -149,6 +149,7 @@ public class BGBuildScript
 			{
 				if (module.dependencies != null)
 				{
+					Debug.Log($"[BatchAddUpmPackages] Found dependencies on module {module.name}");
 					foreach (var dependency in module.dependencies)
 					{
 						if (IsPackageDependency(dependency))
@@ -309,6 +310,8 @@ public class BGBuildScript
 	[Serializable]
 	class ImportModule
 	{
+		public string id;
+		public string name;
 		public List<string> dependencies;
 	}
 
