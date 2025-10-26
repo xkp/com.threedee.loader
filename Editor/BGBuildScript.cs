@@ -124,6 +124,8 @@ public class BGBuildScript
 
 	public static void Create()
 	{
+		Debug.Log($"[threedee] calling Create");
+
 		BindDirectories();
 		BindState();
 
@@ -142,6 +144,8 @@ public class BGBuildScript
 			}
 
 			//build dependencies
+			Debug.Log($"[threedee] searching for dependencies...");
+
 			var modules = LoadGameModules(Directories.gameItemPath, Directories.modulePath);
 			var packageDependencies = new List<string>();
 			var assetDependencies = new List<string>();
@@ -149,7 +153,7 @@ public class BGBuildScript
 			{
 				if (module.dependencies != null)
 				{
-					Debug.Log($"[BatchAddUpmPackages] Found dependencies on module {module.name}");
+					Debug.Log($"[threedee] found {module.dependencies.Count} dependencies on module {module.name}");
 					foreach (var dependency in module.dependencies)
 					{
 						if (IsPackageDependency(dependency))
@@ -160,6 +164,7 @@ public class BGBuildScript
 				}
 			}
 
+			Debug.Log($"[threedee] installing dependencies...");
 			InstallUPM(packageDependencies.ToArray());
 			AddPackagesToStep(assetDependencies);
 		}
