@@ -35,6 +35,7 @@ public class BigGameModule
 	public string name { get; set; }
 	public string type { get; set; }
 	public string controller { get; set; }
+	public List<string> dependencies { get; set; }
 	public List<BigGameItemGroup> itemGroups { get; set; }
 	public List<BigGameItem> userTemplates { get; set; } = new List<BigGameItem>();
 

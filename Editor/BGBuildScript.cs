@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -8,12 +8,330 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using Unity.AI.Navigation;
 using System.Threading.Tasks;
+using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
 
 public class BGBuildScript
 {
+	internal static class Directories
+	{
+		public static string inputFolder { get; set; }
+		public static string outputFolder { get; set; }
+		public static string gameItemPath { get; set; }
+		public static string modulePath { get; set; }
+	}
+
+	static void BindDirectories()
+	{
+		string[] args = System.Environment.GetCommandLineArgs();
+
+		var i = 0;
+		while (i < args.Length)
+		{
+			var arg = args[i];
+			if (arg == "-inputFolder")
+				Directories.inputFolder = args[i + 1];
+			else if (arg == "-outputFolder")
+				Directories.outputFolder = args[i + 1];
+			else if (arg == "-itemFile")
+				Directories.gameItemPath = args[i + 1];
+			else if (arg == "-moduleFolder")
+				Directories.modulePath = args[i + 1];
+
+			i++;
+		}
+	}
+
+	[Serializable]
+	class BuildStepData
+	{
+		public List<string> dependencies; //for install step
+	}
+
+	[Serializable]
+	class BuildStep
+	{
+		public string name { get; set; }
+		public List<string> errors = new List<string>();
+		public BuildStepData data { get; set; } = new BuildStepData();
+	}
+
+	static class BuildState
+	{
+		public static List<BuildStep> steps = new List<BuildStep>();
+
+		public static void AddError(string stepName, string message)
+		{
+			var step = steps.FirstOrDefault(s => s.name == stepName);
+			if (step == null)
+			{
+				step = new BuildStep
+				{
+					name = stepName,
+					errors = new List<string> { message }
+				};
+				steps.Add(step);
+			}
+			else
+				step.errors.Add(message);
+		}
+
+		public static BuildStep GetStep(string stepName)
+		{
+			return steps.Find(s => s.name == stepName);
+		}
+
+		public static BuildStep Add(string installStep)
+		{
+			var step = new BuildStep { name = installStep };
+			steps.Add(step);
+			return step;
+		}
+	}
+
+	static void BindState()
+	{
+		if (Directory.Exists(Directories.inputFolder))
+		{
+			var stateFile = $"{Directories.inputFolder}\\Assets\\Big Game\\build.json";
+			if (File.Exists(stateFile))
+			{
+				string json = File.ReadAllText(stateFile);
+				BuildState.steps = JsonUtility.FromJson<List<BuildStep>>(json);
+			}
+		}
+		else
+		{
+			BuildState.steps.Clear();
+		}
+	}
+
+	private static void SaveState()
+	{
+		if (Directory.Exists(Directories.inputFolder))
+		{
+			var stateFile = $"{Directories.inputFolder}\\Assets\\Big Game\\build.json";
+			if (File.Exists(stateFile))
+			{
+				string json = JsonUtility.ToJson(BuildState.steps);
+				File.WriteAllText(stateFile, json);
+			}
+		}
+	}
+
+	static string CreateStep = "create";
+	static string InstallStep = "install";
+
 	public static void Create()
 	{
-		Console.WriteLine("Creating directory structure, no more is needed");
+		BindDirectories();
+		BindState();
+
+		try
+		{
+			if (BuildState.steps.Any())
+			{
+				Console.WriteLine($"Create has already been ran for this game");
+				return;
+			}
+
+			if (!File.Exists(Directories.gameItemPath))
+			{
+				BuildState.AddError(CreateStep, $"Missing item file {Directories.gameItemPath ?? string.Empty}");
+				return;
+			}
+
+			//build dependencies
+			var modules = LoadGameModules(Directories.gameItemPath, Directories.modulePath);
+			var packageDependencies = new List<string>();
+			var assetDependencies = new List<string>();
+			foreach (var module in modules)
+			{
+				if (module.dependencies != null)
+				{
+					foreach (var dependency in module.dependencies)
+					{
+						if (IsPackageDependency(dependency))
+							packageDependencies.Add(dependency);
+						else
+							assetDependencies.Add(dependency);
+					}
+				}
+			}
+
+			InstallUPM(packageDependencies.ToArray());
+			AddPackagesToStep(assetDependencies);
+		}
+		finally
+		{
+			SaveState();
+		}
+	}
+
+	private static void AddPackagesToStep(List<string> assetDependencies)
+	{
+		var step = BuildState.GetStep(InstallStep);
+		if (step == null)
+		{
+			step = BuildState.Add(InstallStep);
+		}
+
+		step.data.dependencies = assetDependencies;
+	}
+
+	private const int DefaultPerPackageTimeoutSec = 600; // 10 minutes per package
+	private static readonly List<(string id, AddRequest request, DateTime started)> _active = new();
+	private static readonly List<(string id, string error)> _failed = new();
+	private static readonly List<string> _succeeded = new();
+	private static int _timeoutPerPkgSec = DefaultPerPackageTimeoutSec;
+	private static bool _started = false;
+	private static void InstallUPM(string[] packages)
+	{
+		try
+		{
+			if (_started) return;
+			_started = true;
+
+			if (packages.Length == 0)
+			{
+				Debug.LogError("[BatchAddUpmPackages] No packages specified. Use -packagesFile or -packages.");
+				return;
+			}
+
+			Debug.Log($"[BatchAddUpmPackages] Installing {packages.Length} package(s) (timeout {_timeoutPerPkgSec}s each) …");
+
+			foreach (var id in packages)
+				QueueAdd(id);
+
+			// Poll until all requests complete
+			EditorApplication.update += Tick;
+		}
+		catch (Exception ex)
+		{
+			Debug.LogError($"[BatchAddUpmPackages] Failed to start: {ex}");
+			EditorApplication.Exit(1);
+		}
+	}
+
+	private static void QueueAdd(string id)
+	{
+		try
+		{
+			// Unity will ignore duplicates already in manifest.json
+			var req = Client.Add(id);
+			_active.Add((id, req, DateTime.UtcNow));
+			Debug.Log($"[BatchAddUpmPackages] Add queued: {id}");
+		}
+		catch (Exception ex)
+		{
+			_failed.Add((id, $"Exception while queuing add: {ex.Message}"));
+			Debug.LogError($"[BatchAddUpmPackages] Queue failed: {id}\n{ex}");
+		}
+	}
+
+	private static void Tick()
+	{
+		// Check each active request
+		for (int i = _active.Count - 1; i >= 0; i--)
+		{
+			var (id, req, started) = _active[i];
+
+			// Timeout?
+			if ((DateTime.UtcNow - started).TotalSeconds > _timeoutPerPkgSec)
+			{
+				_failed.Add((id, "Timeout"));
+				Debug.LogError($"[BatchAddUpmPackages] TIMEOUT installing: {id}");
+				_active.RemoveAt(i);
+				continue;
+			}
+
+			switch (req.Status)
+			{
+				case StatusCode.InProgress:
+					// still working
+					break;
+
+				case StatusCode.Success:
+					_succeeded.Add(id);
+					Debug.Log($"[BatchAddUpmPackages] Installed: {id}");
+					_active.RemoveAt(i);
+					break;
+
+				case StatusCode.Failure:
+					var message = req.Error == null ? "Unknown error" : $"{req.Error.message} (code {req.Error.errorCode})";
+					_failed.Add((id, message));
+					Debug.LogError($"[BatchAddUpmPackages] FAILED: {id} – {message}");
+					_active.RemoveAt(i);
+					break;
+			}
+		}
+
+		// Done?
+		if (_active.Count == 0)
+		{
+			EditorApplication.update -= Tick;
+
+			// Force refresh to import any newly added assets/asmdefs
+			try
+			{
+				AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+				AssetDatabase.SaveAssets();
+			}
+			catch { /* headless safe */ }
+
+			// Summary + exit code
+			if (_failed.Count == 0)
+			{
+				Debug.Log($"[BatchAddUpmPackages] All packages installed successfully ({_succeeded.Count}).");
+				foreach (var id in _succeeded) Debug.Log($"  ✔ {id}");
+				EditorApplication.Exit(0);
+			}
+			else
+			{
+				Debug.LogError($"[BatchAddUpmPackages] Completed with failures. Success: {_succeeded.Count}, Failed: {_failed.Count}");
+				foreach (var id in _succeeded) Debug.Log($"  ✔ {id}");
+				foreach (var (id, err) in _failed) Debug.LogError($"  ✖ {id} – {err}");
+				EditorApplication.Exit(1);
+			}
+		}
+	}
+	private static bool IsPackageDependency(string dependency)
+	{
+		return !string.IsNullOrEmpty(dependency) && dependency.Split(".").Length > 2;
+	}
+
+	[Serializable]
+	class ImportGame
+	{
+		public List<string> modules;
+	}
+
+	[Serializable]
+	class ImportModule
+	{
+		public List<string> dependencies;
+	}
+
+	private static List<ImportModule> LoadGameModules(string gameItemPath, string modulePath)
+	{
+		var result = new List<ImportModule>();
+		var jsonContent = File.ReadAllText(gameItemPath);
+		var import = JsonUtility.FromJson<ImportGame>(jsonContent);
+		if (import != null)
+		{
+			foreach (var moduleId in import.modules)
+			{
+				var bgmFile = Path.Combine(modulePath, moduleId, "module.bgm");
+				if (File.Exists(bgmFile))
+				{
+					var bgmFileContents = File.ReadAllText(bgmFile);
+					var module = JsonUtility.FromJson<ImportModule>(bgmFileContents);
+					result.Add(module);
+				}
+			}
+		}
+
+		return result;
 	}
 
 	public static async void CreateGame()
