@@ -111,11 +111,8 @@ public class BGBuildScript
 		if (Directory.Exists(Directories.inputFolder))
 		{
 			var stateFile = $"{Directories.inputFolder}\\Assets\\Big Game\\build.json";
-			if (File.Exists(stateFile))
-			{
-				string json = JsonUtility.ToJson(BuildState.steps);
-				File.WriteAllText(stateFile, json);
-			}
+			string json = JsonUtility.ToJson(BuildState.steps);
+			File.WriteAllText(stateFile, json);
 		}
 	}
 
