@@ -165,7 +165,7 @@ public class BGBuildScript
 
 			Debug.Log($"[threedee] installing dependencies...");
 			InstallUPM(packageDependencies.ToArray());
-			AddPackagesToStep(assetDependencies);
+			AddPackagesToCreateStep(assetDependencies);
 		}
 		finally
 		{
@@ -178,7 +178,7 @@ public class BGBuildScript
 		return dependency.Contains('|');
 	}
 
-	private static void AddPackagesToStep(List<string> assetDependencies)
+	private static void AddPackagesToCreateStep(List<string> assetDependencies)
 	{
 		var step = BuildState.GetStep(CreateStep);
 		if (step == null)
@@ -189,6 +189,11 @@ public class BGBuildScript
 		step.data.dependencies = assetDependencies;
 		if (assetDependencies?.Count > 0)
 		{
+			foreach (var dependency in assetDependencies)
+			{
+				Debug.Log($"[threedee] Dependency found: {dependency}");
+			}
+
 			step.errors.Add("Depedendencies need to be installed");
 		}
 	}
