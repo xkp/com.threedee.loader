@@ -153,7 +153,9 @@ public class BGBuildScript
 					Debug.Log($"[threedee] found {module.dependencies.Count} dependencies on module {module.name}");
 					foreach (var dependency in module.dependencies)
 					{
-						if (IsPackageDependency(dependency))
+						if (isAssetDependency(dependency))
+							assetDependencies.Add(dependency);
+						else if (IsPackageDependency(dependency))
 							packageDependencies.Add(dependency);
 						else
 							assetDependencies.Add(dependency);
@@ -171,15 +173,24 @@ public class BGBuildScript
 		}
 	}
 
+	private static bool isAssetDependency(string dependency)
+	{
+		return dependency.Contains('|');
+	}
+
 	private static void AddPackagesToStep(List<string> assetDependencies)
 	{
-		var step = BuildState.GetStep(InstallStep);
+		var step = BuildState.GetStep(CreateStep);
 		if (step == null)
 		{
-			step = BuildState.Add(InstallStep);
+			step = BuildState.Add(CreateStep);
 		}
 
 		step.data.dependencies = assetDependencies;
+		if (assetDependencies?.Count > 0)
+		{
+			step.errors.Add("Depedendencies need to be installed");
+		}
 	}
 
 	private const int DefaultPerPackageTimeoutSec = 600; // 10 minutes per package
