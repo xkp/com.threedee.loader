@@ -83,7 +83,7 @@ public class BGBuildScript
 
 		public static BuildStep Add(string stepName)
 		{
-			var step = new BuildStep { name = stepName };
+			var step = new BuildStep { name = stepName, data = new BuildStepData() };
 			steps.Add(step);
 			return step;
 		}
@@ -201,6 +201,9 @@ public class BGBuildScript
 		{
 			step = BuildState.Add(CreateStep);
 		}
+
+		if (step.data == null)
+			step.data = new BuildStepData();
 
 		step.data.dependencies = assetDependencies;
 		if (assetDependencies?.Count > 0)
