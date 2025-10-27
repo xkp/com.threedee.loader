@@ -13,12 +13,13 @@ using UnityEditor.PackageManager.Requests;
 
 public class BGBuildScript
 {
-	internal static class Directories
+	internal static class Configuration
 	{
 		public static string inputFolder { get; set; }
 		public static string outputFolder { get; set; }
 		public static string gameItemPath { get; set; }
 		public static string modulePath { get; set; }
+		public static string buildFile { get; set; }
 	}
 
 	static void BindDirectories()
@@ -30,13 +31,15 @@ public class BGBuildScript
 		{
 			var arg = args[i];
 			if (arg == "-inputFolder")
-				Directories.inputFolder = args[i + 1];
+				Configuration.inputFolder = args[i + 1];
 			else if (arg == "-outputFolder")
-				Directories.outputFolder = args[i + 1];
+				Configuration.outputFolder = args[i + 1];
 			else if (arg == "-itemFile")
-				Directories.gameItemPath = args[i + 1];
+				Configuration.gameItemPath = args[i + 1];
 			else if (arg == "-moduleFolder")
-				Directories.modulePath = args[i + 1];
+				Configuration.modulePath = args[i + 1];
+			else if (arg == "-buildFile")
+				Configuration.buildFile = args[i + 1];
 
 			i++;
 		}
@@ -91,12 +94,11 @@ public class BGBuildScript
 
 	static void BindState()
 	{
-		if (Directory.Exists(Directories.inputFolder))
+		if (Directory.Exists(Configuration.inputFolder))
 		{
-			var stateFile = $"{Directories.inputFolder}\\Assets\\Big Game\\build.json";
-			if (File.Exists(stateFile))
+			if (File.Exists(Configuration.buildFile))
 			{
-				string json = File.ReadAllText(stateFile);
+				string json = File.ReadAllText(Configuration.buildFile);
 				BuildState.steps = JsonUtility.FromJson<List<BuildStep>>(json);
 			}
 		}
@@ -108,11 +110,12 @@ public class BGBuildScript
 
 	private static void SaveState()
 	{
-		if (Directory.Exists(Directories.inputFolder))
+		if (Directory.Exists(Configuration.inputFolder))
 		{
-			var stateFile = $"{Directories.inputFolder}\\Assets\\Big Game\\build.json";
 			string json = JsonUtility.ToJson(BuildState.steps);
-			File.WriteAllText(stateFile, json);
+			Debug.Log($"[threedee] Writing: {Configuration.buildFile} with contents: {json}");
+
+			File.WriteAllText(Configuration.buildFile, json);
 		}
 	}
 
@@ -134,16 +137,16 @@ public class BGBuildScript
 				return;
 			}
 
-			if (!File.Exists(Directories.gameItemPath))
+			if (!File.Exists(Configuration.gameItemPath))
 			{
-				BuildState.AddError(CreateStep, $"Missing item file {Directories.gameItemPath ?? string.Empty}");
+				BuildState.AddError(CreateStep, $"Missing item file {Configuration.gameItemPath ?? string.Empty}");
 				return;
 			}
 
 			//build dependencies
 			Debug.Log($"[threedee] searching for dependencies...");
 
-			var modules = LoadGameModules(Directories.gameItemPath, Directories.modulePath);
+			var modules = LoadGameModules(Configuration.gameItemPath, Configuration.modulePath);
 			var packageDependencies = new List<string>();
 			var assetDependencies = new List<string>();
 			foreach (var module in modules)
