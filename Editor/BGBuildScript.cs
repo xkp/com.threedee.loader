@@ -52,7 +52,7 @@ public class BGBuildScript
 	class BuildStep
 	{
 		public string name;
-		public List<string> errors;
+		public string error;
 		public BuildStepData data;
 	}
 
@@ -68,12 +68,12 @@ public class BGBuildScript
 				step = new BuildStep
 				{
 					name = stepName,
-					errors = new List<string> { message }
+					error = message
 				};
 				steps.Add(step);
 			}
 			else
-				step.errors.Add(message);
+				step.error = message;
 		}
 
 		public static BuildStep GetStep(string stepName)
@@ -213,7 +213,7 @@ public class BGBuildScript
 				Debug.Log($"[threedee] Dependency found: {dependency}");
 			}
 
-			step.errors.Add("Depedendencies need to be installed");
+			step.error = "Dependencies must be installed before continuing";
 		}
 	}
 
