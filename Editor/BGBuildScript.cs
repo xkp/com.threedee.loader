@@ -153,12 +153,22 @@ public class BGBuildScript
 					Debug.Log($"[threedee] found {module.dependencies.Count} dependencies on module {module.name}");
 					foreach (var dependency in module.dependencies)
 					{
+						Debug.Log($"[threedee] processing dependency: {dependency}...");
 						if (isAssetDependency(dependency))
+						{
+							Debug.Log($"[threedee] asset dependency found: {dependency}...");
 							assetDependencies.Add(dependency);
+						}
 						else if (IsPackageDependency(dependency))
+						{
+							Debug.Log($"[threedee] package dependency found: {dependency}...");
 							packageDependencies.Add(dependency);
+						}
 						else
+						{
+							Debug.Log($"[threedee] default asset dependency found: {dependency}...");
 							assetDependencies.Add(dependency);
+						}
 					}
 				}
 			}
@@ -180,6 +190,12 @@ public class BGBuildScript
 
 	private static void AddPackagesToCreateStep(List<string> assetDependencies)
 	{
+		if (assetDependencies == null || !assetDependencies.Any())
+		{
+			Debug.Log($"[threedee] No dependency found");
+			return;
+		}
+
 		var step = BuildState.GetStep(CreateStep);
 		if (step == null)
 		{
