@@ -92,6 +92,12 @@ public class BGBuildScript
 		}
 	}
 
+	[Serializable]
+	class ExportState
+	{
+		public List<BuildStep> steps;
+	}
+
 	static void BindState()
 	{
 		if (Directory.Exists(Configuration.inputFolder))
@@ -99,7 +105,8 @@ public class BGBuildScript
 			if (File.Exists(Configuration.buildFile))
 			{
 				string json = File.ReadAllText(Configuration.buildFile);
-				BuildState.steps = JsonUtility.FromJson<List<BuildStep>>(json);
+				var import = JsonUtility.FromJson<ExportState>(json);
+				BuildState.steps = import.steps;
 			}
 		}
 		else
@@ -112,7 +119,7 @@ public class BGBuildScript
 	{
 		if (Directory.Exists(Configuration.inputFolder))
 		{
-			string json = JsonUtility.ToJson(BuildState.steps);
+			string json = JsonUtility.ToJson(new ExportState { steps = BuildState.steps });
 			Debug.Log($"[threedee] Writing: {Configuration.buildFile} with contents: {json}");
 
 			File.WriteAllText(Configuration.buildFile, json);
