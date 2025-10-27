@@ -51,9 +51,9 @@ public class BGBuildScript
 	[Serializable]
 	class BuildStep
 	{
-		public string name { get; set; }
-		public List<string> errors = new List<string>();
-		public BuildStepData data { get; set; } = new BuildStepData();
+		public string name;
+		public List<string> errors;
+		public BuildStepData data;
 	}
 
 	static class BuildState
@@ -81,9 +81,9 @@ public class BGBuildScript
 			return steps.Find(s => s.name == stepName);
 		}
 
-		public static BuildStep Add(string installStep)
+		public static BuildStep Add(string stepName)
 		{
-			var step = new BuildStep { name = installStep };
+			var step = new BuildStep { name = stepName };
 			steps.Add(step);
 			return step;
 		}
