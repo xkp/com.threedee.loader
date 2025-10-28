@@ -138,12 +138,13 @@ public class BGBuildScript
 
 		try
 		{
-			if (BuildState.steps.Any())
+			//TODO: detect our step and make sure we can move forward (i.e check dependencies)
+/*			if (BuildState.steps.Any())
 			{
 				Console.WriteLine($"Create has already been ran for this game");
 				return;
 			}
-
+*/
 			if (!File.Exists(Configuration.gameItemPath))
 			{
 				BuildState.AddError(CreateStep, $"Missing item file {Configuration.gameItemPath ?? string.Empty}");
