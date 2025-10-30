@@ -441,7 +441,7 @@ public abstract class BaseCharacterModule : BaseBGModel
 
 		var path = FindPrefabPathByName(prefabName);
 		if (string.IsNullOrEmpty(path))
-			throw new InvalidOperationException($"No prefab found named '{prefabName}' under Assets/.");
+			return null;
 
 		var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 		if (!prefab)
@@ -454,14 +454,9 @@ public abstract class BaseCharacterModule : BaseBGModel
 		if (!instance)
 			throw new Exception("PrefabUtility.InstantiatePrefab returned null.");
 
-		Undo.RegisterCreatedObjectUndo(instance, $"Instantiate {prefab.name}");
-
 		instance.transform.position = worldPosition ?? Vector3.zero;
 		instance.transform.rotation = worldRotation ?? Quaternion.identity;
 		instance.name = prefab.name; // keep clean name (no (Clone))
-
-		if (selectAfterCreate)
-			Selection.activeObject = instance;
 
 		return instance;
 	}
