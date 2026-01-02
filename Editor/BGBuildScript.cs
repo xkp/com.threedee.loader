@@ -139,12 +139,12 @@ public class BGBuildScript
 		try
 		{
 			//TODO: detect our step and make sure we can move forward (i.e check dependencies)
-/*			if (BuildState.steps.Any())
-			{
-				Console.WriteLine($"Create has already been ran for this game");
-				return;
-			}
-*/
+			/*			if (BuildState.steps.Any())
+						{
+							Console.WriteLine($"Create has already been ran for this game");
+							return;
+						}
+			*/
 			if (!File.Exists(Configuration.gameItemPath))
 			{
 				BuildState.AddError(CreateStep, $"Missing item file {Configuration.gameItemPath ?? string.Empty}");
@@ -392,7 +392,8 @@ public class BGBuildScript
 		string outputFolder;
 		string gameItemPath;
 		string modulePath;
-		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath))
+		string assetPath;
+		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath, out assetPath))
 			return;
 
 		Console.WriteLine($"gameItemPath = {gameItemPath}");
@@ -410,7 +411,7 @@ public class BGBuildScript
 		var postProcess = new List<PostProcessNode>();
 		ThreedeeLoader.Load(inputFolder, outputFolder, postProcess);
 
-		await BigGameLoader.Load(gameItemPath, modulePath, postProcess);
+		await BigGameLoader.Load(gameItemPath, modulePath, assetPath, postProcess);
 
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
@@ -463,7 +464,8 @@ public class BGBuildScript
 		string outputFolder;
 		string gameItemPath;
 		string modulePath;
-		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath))
+		string assetPath;
+		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath, out assetPath))
 			return;
 
 		Scene scene = OpenDefaultScene();
@@ -537,12 +539,13 @@ public class BGBuildScript
 		return scene;
 	}
 
-	private static bool Scaffold(out string inputFolder, out string outputFolder, out string gameItemPath, out string modulePath)
+	private static bool Scaffold(out string inputFolder, out string outputFolder, out string gameItemPath, out string modulePath, out string localAssetPath)
 	{
 		inputFolder = string.Empty;
 		outputFolder = string.Empty;
 		gameItemPath = string.Empty;
 		modulePath = string.Empty;
+		localAssetPath = string.Empty;
 
 		string[] args = System.Environment.GetCommandLineArgs();
 
@@ -558,6 +561,8 @@ public class BGBuildScript
 				gameItemPath = args[i + 1];
 			else if (arg == "-moduleFolder")
 				modulePath = args[i + 1];
+			else if (arg == "-assetFolder")
+				localAssetPath = args[i + 1];
 
 			i++;
 		}

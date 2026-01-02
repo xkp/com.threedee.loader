@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GLTFast;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,11 +13,12 @@ using Unity.Plastic.Newtonsoft.Json;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.Rendering;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 public class BigGameLoader
 {
-	public static async Task Load(string gameItemPath, string modulePath, List<PostProcessNode> preprocess)
+	public static async Task Load(string gameItemPath, string modulePath, string assetPath, List<PostProcessNode> preprocess)
 	{
 		Debug.Log(gameItemPath);
 		string jsonContent = File.ReadAllText(gameItemPath);
@@ -52,7 +54,7 @@ public class BigGameLoader
 		{
 			foreach (var item in game.GameItems)
 			{
-				await CreateGameObject(item, modules);
+				await CreateGameObject(item, modules, assetPath);
 			}
 		}
 
@@ -511,7 +513,7 @@ public class BigGameLoader
 				var module = GetModuleById(modules, gi.ModuleId);
 				if (module != null)
 				{
-					await CreateGameObject(gi, modules);
+					await CreateGameObject(gi, modules, string.Empty);
 				}
 			}
 
@@ -572,7 +574,7 @@ public class BigGameLoader
 		}
 	}
 
-	private static async Task CreateGameObject(GameItem item, IEnumerable<IBGModule> modules)
+	private static async Task CreateGameObject(GameItem item, IEnumerable<IBGModule> modules, string assetPath)
 	{
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
@@ -621,5 +623,136 @@ public class BigGameLoader
 				go.name = item.Id; //just in case
 			}
 		}
+		else
+		{
+			switch (item.ModuleId)
+			{
+				case "MODULE_USER_ASSET":
+					var glbPath = Path.Combine(assetPath, item.TemplateId, "object.glb");
+					if (File.Exists(glbPath))
+					{
+						var unityPath = $"Assets/Big Game/Assets/{item.TemplateId}/object.glb";
+						var go = await ImportGlbAsync(glbPath, unityPath);
+						go.name = item.Id;
+						UpdateGameObject(item, go);
+					}
+					else
+					{
+						Debug.Log($"Missing local asset: {glbPath}");
+					}
+					break;
+				default:
+					Debug.Log($"Invalid module id: {item.ModuleId}");
+					break;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Imports a GLB into Assets AND instantiates it into the active scene.
+	/// Returns the scene instance.
+	/// </summary>
+	public static async Task<GameObject> ImportGlbAsync(
+		string sourceGlbAbsolutePath,
+		string targetAssetPath,
+		Transform parent = null,
+		Vector3? position = null,
+		bool selectAndFrame = true)
+	{
+		if (!File.Exists(sourceGlbAbsolutePath))
+			throw new FileNotFoundException("GLB not found", sourceGlbAbsolutePath);
+
+		// targetAssetPath must be "Assets/....glb"
+		if (!targetAssetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+			throw new ArgumentException("targetAssetPath must start with 'Assets/'.", nameof(targetAssetPath));
+
+		// Copy file into Assets
+		var projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
+		var absTarget = Path.Combine(projectRoot, targetAssetPath);
+
+		Directory.CreateDirectory(Path.GetDirectoryName(absTarget)!);
+		File.Copy(sourceGlbAbsolutePath, absTarget, true);
+
+		// Import (sync, main thread only)
+		AssetDatabase.ImportAsset(targetAssetPath, ImportAssetOptions.ForceUpdate);
+		await WaitForImportToFinish(targetAssetPath);
+
+		// Resolve the imported GameObject asset (prefab/model root)
+		var assetGo = ResolveImportedGameObject(targetAssetPath);
+		if (assetGo == null)
+			throw new Exception("GLB imported but no GameObject asset found: " + targetAssetPath);
+
+		// Instantiate into the active scene
+		GameObject instance = InstantiateIntoScene(assetGo, parent, position ?? Vector3.zero);
+
+		// Mark scene dirty so it saves
+		EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+		if (selectAndFrame)
+		{
+			Selection.activeGameObject = instance;
+			SceneView.lastActiveSceneView?.FrameSelected();
+		}
+
+		return instance;
+	}
+
+	private static GameObject ResolveImportedGameObject(string glbAssetPath)
+	{
+		// 1) Sometimes the main asset at the glb path is a GameObject
+		var main = AssetDatabase.LoadMainAssetAtPath(glbAssetPath) as GameObject;
+		if (main != null) return main;
+
+		// 2) Or it's a sub-asset (common with scripted importers)
+		var all = AssetDatabase.LoadAllAssetsAtPath(glbAssetPath);
+
+		// Prefer a prefab-like root: first GameObject that looks like a root (has Transform, name not empty)
+		var candidates = all.OfType<GameObject>().ToList();
+		if (candidates.Count == 0) return null;
+
+		// Heuristic: prefer the one that has children (often the root) otherwise first
+		var withChildren = candidates.FirstOrDefault(go => go.transform.childCount > 0);
+		return withChildren != null ? withChildren : candidates[0];
+	}
+
+	private static GameObject InstantiateIntoScene(GameObject assetGo, Transform parent, Vector3 position)
+	{
+		GameObject instance;
+
+		// If this is a prefab asset, instantiate via PrefabUtility to keep prefab connection
+		if (PrefabUtility.GetPrefabAssetType(assetGo) != PrefabAssetType.NotAPrefab)
+		{
+			instance = (GameObject)PrefabUtility.InstantiatePrefab(assetGo);
+		}
+		else
+		{
+			// Otherwise just clone the asset object
+			instance = UnityEngine.Object.Instantiate(assetGo);
+		}
+
+		Undo.RegisterCreatedObjectUndo(instance, "Import GLB");
+
+		if (parent != null)
+			instance.transform.SetParent(parent, false);
+
+		instance.transform.position = position;
+		return instance;
+	}
+
+	private static Task WaitForImportToFinish(string assetPath)
+	{
+		var tcs = new TaskCompletionSource<bool>();
+
+		void Check()
+		{
+			if (!AssetDatabase.IsAssetImportWorkerProcess())
+			{
+				EditorApplication.delayCall -= Check;
+				tcs.TrySetResult(true);
+			}
+		}
+
+		EditorApplication.delayCall += Check;
+		return tcs.Task;
 	}
 }
