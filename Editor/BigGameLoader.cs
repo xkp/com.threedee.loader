@@ -170,7 +170,7 @@ public class BigGameLoader
 
 		modules = BuildModules(result, modulePath, usedModules);
 
-		var userItemTemplatesNodes = root["userItemTemplates"] as JArray;
+/*		var userItemTemplatesNodes = root["userItemTemplates"] as JArray;
 		foreach (JObject userItemTemplateNode in userItemTemplatesNodes)
 		{
 			var templateModuleId = userItemTemplateNode["_moduleId"]?.ToString();
@@ -184,7 +184,7 @@ public class BigGameLoader
 			var templateItem = LoadBigGameItem(userItemTemplateNode);
 			templateModule.Model.userTemplates.Add(templateItem);
 		}
-
+*/
 		/*		var mainCharacterNode = root["character"] as JObject;
 				result.Character = LoadCharacter(mainCharacterNode);
 		*/
