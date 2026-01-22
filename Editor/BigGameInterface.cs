@@ -118,6 +118,7 @@ public class GameItem
 	public string Name { get; set; }
 	public string ModuleId { get; set; }
 	public string TemplateId { get; set; }
+	public string BuildId { get; set; }
 	public Dictionary<string, object> Values { get; set; }
 	public Vector3 Position { get; set; }
 	public Quaternion Rotation { get; set; }
@@ -148,7 +149,7 @@ public interface IBGModule
 	Task Build();
 	Task Cleanup();
 
-	Task<GameObject> CreateItem(GameItem item, BigGameItem template);
+	Task<GameObject> CreateItem(GameItem item, BigGameItem template, JObject buildItem);
 	Task<bool> UpdateItem(GameItem item, GameObject go);
 	Task RemoveItem(GameObject go);
 	Task Preprocess(IList<PostProcessNode> preprocess);
@@ -190,7 +191,7 @@ public class BaseBGModel : IBGModule
 		return Task.CompletedTask;
 	}
 
-	public virtual Task<GameObject> CreateItem(GameItem item, BigGameItem template)
+	public virtual Task<GameObject> CreateItem(GameItem item, BigGameItem template, JObject buildItem)
 	{
 		return Task.FromResult(null as GameObject);
 	}
@@ -386,14 +387,21 @@ public abstract class BaseCharacterModule : BaseBGModel
 
 	protected virtual CharacterDescriptor GetDescriptor(JObject data)
 	{
-		return data?.ToObject<CharacterDescriptor>();
+		var result = data?.ToObject<CharacterDescriptor>();
+		if (result != null)
+		{
+			result.Gender = data.SelectToken("data.gender")?.Value<string>();
+			result.Role = data.SelectToken("data.role")?.Value<string>();
+		}
+
+		return result;
 	}
 
-	public override async Task<GameObject> CreateItem(GameItem item, BigGameItem template)
+	public override async Task<GameObject> CreateItem(GameItem item, BigGameItem template, JObject buildItem)
 	{
-		if (item.Values.TryGetValue("descriptor", out object descriptor))
+		if (buildItem != null)
 		{
-			var character = GetDescriptor(descriptor as JObject);
+			var character = GetDescriptor(buildItem as JObject);
 			var instance = InstantiatePrefabFor(character, item, template);
 
 			if (instance != null)

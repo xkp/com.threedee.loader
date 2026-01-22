@@ -1,4 +1,5 @@
 ﻿using GLTFast;
+using Unity.Plastic.Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +11,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Unity.Plastic.Newtonsoft.Json;
-using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEditor.SceneManagement;
@@ -18,11 +18,14 @@ using UnityEngine;
 
 public class BigGameLoader
 {
-	public static async Task Load(string gameItemPath, string modulePath, string assetPath, List<PostProcessNode> preprocess)
+	public static async Task Load(string gameItemPath, string buildFilePath, string modulePath, string assetPath, List<PostProcessNode> preprocess)
 	{
 		Debug.Log(gameItemPath);
 		string jsonContent = File.ReadAllText(gameItemPath);
 		JObject jsonObject = JObject.Parse(jsonContent);
+
+		string buildContent = File.ReadAllText(buildFilePath);
+		JObject buildFileObject = JObject.Parse(buildContent);
 
 		var game = LoadGame(jsonObject, modulePath, out var modules);
 		if (game == null)
@@ -54,7 +57,8 @@ public class BigGameLoader
 		{
 			foreach (var item in game.GameItems)
 			{
-				await CreateGameObject(item, modules, assetPath);
+				JObject buildItem = GetBuildItem(buildFileObject, item.BuildId);
+				await CreateGameObject(item, buildItem, modules, assetPath);
 			}
 		}
 
@@ -62,6 +66,30 @@ public class BigGameLoader
 		{
 			await module.Cleanup();
 		}
+	}
+
+	private static JObject GetBuildItem(JObject buildFileObject, string buildId)
+	{
+		if (string.IsNullOrEmpty(buildId) || buildFileObject == null)
+			return null;
+
+		//TODO: standardize
+		var avatarId = buildFileObject.SelectToken("avatar.id")?.Value<string>();
+		if (avatarId == buildId)
+			return buildFileObject.SelectToken("avatar") as JObject;
+
+		var npcs = buildFileObject.SelectToken("npcs") as JArray;
+		if (npcs != null)
+		{
+			foreach (var obj in npcs.OfType<JObject>())
+			{
+				string id = (string)obj["id"];
+				if (id == buildId)
+					return obj;
+			}
+		}
+
+		return null;
 	}
 
 	private static IBGModule GetModuleById(IEnumerable<IBGModule> modules, string moduleId)
@@ -170,21 +198,21 @@ public class BigGameLoader
 
 		modules = BuildModules(result, modulePath, usedModules);
 
-/*		var userItemTemplatesNodes = root["userItemTemplates"] as JArray;
-		foreach (JObject userItemTemplateNode in userItemTemplatesNodes)
-		{
-			var templateModuleId = userItemTemplateNode["_moduleId"]?.ToString();
-			var templateModule = modules.FirstOrDefault(m => m.Model.id == templateModuleId);
-			if (templateModule == null)
-			{
-				Debug.Log($"A user template is referencing an unknown module: {templateModuleId}");
-				continue;
-			}
+		/*		var userItemTemplatesNodes = root["userItemTemplates"] as JArray;
+				foreach (JObject userItemTemplateNode in userItemTemplatesNodes)
+				{
+					var templateModuleId = userItemTemplateNode["_moduleId"]?.ToString();
+					var templateModule = modules.FirstOrDefault(m => m.Model.id == templateModuleId);
+					if (templateModule == null)
+					{
+						Debug.Log($"A user template is referencing an unknown module: {templateModuleId}");
+						continue;
+					}
 
-			var templateItem = LoadBigGameItem(userItemTemplateNode);
-			templateModule.Model.userTemplates.Add(templateItem);
-		}
-*/
+					var templateItem = LoadBigGameItem(userItemTemplateNode);
+					templateModule.Model.userTemplates.Add(templateItem);
+				}
+		*/
 		/*		var mainCharacterNode = root["character"] as JObject;
 				result.Character = LoadCharacter(mainCharacterNode);
 		*/
@@ -205,6 +233,7 @@ public class BigGameLoader
 		result.Name = itemNode["name"]?.ToString();
 		result.ModuleId = itemNode["moduleId"]?.ToString();
 		result.TemplateId = itemNode["templateId"]?.ToString();
+		result.BuildId = itemNode["buildId"]?.ToString();
 		result.Values = LoadValues(itemNode["values"] as JObject);
 		result.Position = LoadVector(itemNode["position"] as JArray);
 		result.Rotation = LoadQuaternion(itemNode["rotation"] as JArray);
@@ -513,7 +542,8 @@ public class BigGameLoader
 				var module = GetModuleById(modules, gi.ModuleId);
 				if (module != null)
 				{
-					await CreateGameObject(gi, modules, string.Empty);
+					//TODO: load build items
+					await CreateGameObject(gi, null, modules, string.Empty);
 				}
 			}
 
@@ -574,7 +604,7 @@ public class BigGameLoader
 		}
 	}
 
-	private static async Task CreateGameObject(GameItem item, IEnumerable<IBGModule> modules, string assetPath)
+	private static async Task CreateGameObject(GameItem item, JObject buildItem, IEnumerable<IBGModule> modules, string assetPath)
 	{
 		var module = GetModuleById(modules, item.ModuleId);
 		if (module != null)
@@ -583,7 +613,7 @@ public class BigGameLoader
 			if (template != null)
 			{
 				//give the module a chance for custom importing
-				GameObject go = await module.CreateItem(item, template);
+				GameObject go = await module.CreateItem(item, template, buildItem);
 				if (go == null)
 				{
 					//revert to prefab

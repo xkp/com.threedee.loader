@@ -396,8 +396,11 @@ public class BGBuildScript
 		if (!Scaffold(out inputFolder, out outputFolder, out gameItemPath, out modulePath, out assetPath))
 			return;
 
+		string buildFilePath = Path.Combine(Path.GetDirectoryName(gameItemPath), "build.json");
+
 		Console.WriteLine($"gameItemPath = {gameItemPath}");
 		Console.WriteLine($"modulePath = {modulePath}");
+		Console.WriteLine($"buildFilePath = {buildFilePath}");
 
 		Console.WriteLine("Starting scene generation...");
 		Scene scene = OpenDefaultScene();
@@ -411,7 +414,7 @@ public class BGBuildScript
 		var postProcess = new List<PostProcessNode>();
 		ThreedeeLoader.Load(inputFolder, outputFolder, postProcess);
 
-		await BigGameLoader.Load(gameItemPath, modulePath, assetPath, postProcess);
+		await BigGameLoader.Load(gameItemPath, buildFilePath, modulePath, assetPath, postProcess);
 
 		//save before generating light maps
 		EditorSceneManager.SaveScene(scene);
